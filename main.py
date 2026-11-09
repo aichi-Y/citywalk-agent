@@ -282,6 +282,8 @@ with st.sidebar:
         help="可多选；标签越具体，行程越贴合你的节奏",
     )
     go = st.button("🚀 生成行程规划", type="primary", use_container_width=True)
+    demo_btn = st.button("⚡ 秒出示范行程（本地示例 0 秒）", use_container_width=True)
+    st.caption("答辩 / 录像用：直接加载预置示范行程，无需等待模型生成")
 
     st.divider()
     st.header("⚡ 扰动测试（核心亮点）")
@@ -435,6 +437,21 @@ def generate_parallel(messages: list, city, days, budget, prefs):
 
 
 with col1:
+    if demo_btn:
+        demo_path = os.path.join(HERE, "output", "demo_tianjin_2d.json")
+        try:
+            with open(demo_path, "r", encoding="utf-8") as f:
+                st.session_state.plan = json.load(f)
+            st.session_state.last_reply = json.dumps(st.session_state.plan, ensure_ascii=False)
+            st.session_state.messages.append(
+                {"role": "user", "content": "（示范模式）天津 2 天 · 预算 800 元 · 古迹 / 美食 / 打卡热点"}
+            )
+            st.session_state.messages.append(
+                {"role": "assistant", "content": st.session_state.last_reply}
+            )
+        except Exception as e:
+            st.warning(f"示范行程加载失败：{e}")
+
     if go:
         st.session_state.messages.append(
             {"role": "user", "content": build_user_input(city, days, budget, prefs)}
