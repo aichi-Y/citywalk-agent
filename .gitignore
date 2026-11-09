@@ -1,0 +1,18 @@
+# 机密文件：API Key 在这里，严禁上传
+.env
+
+# Python 运行产物
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# Secrets 粘贴用临时文件（含 Key，严禁上传）
+streamlit-secrets-粘贴用.txt
+
+# 竞赛PPT 工程（含大体积素材，不进应用仓库）
+竞赛PPT/

@@ -9,7 +9,7 @@ from main import call_agent, build_user_input, parse_plan, CONFIG, SYSTEM_PROMPT
 
 def main():
     print("=" * 50)
-    print("城墙漫游记 · 城市微旅行规划 Agent（控制台版）")
+    print("智漫游 · 城市旅行规划 Agent（控制台版）")
     print("=" * 50)
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
 
