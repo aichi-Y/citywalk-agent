@@ -443,7 +443,8 @@ hr{ border-color:var(--line) !important }
 }
 [data-testid="stMetricValue"]{ font-weight:800; color:#2A241F }
 /* 隐藏 Streamlit 自带工具条 */
-[data-testid="stToolbar"], [data-testid="stDecoration"], #MainMenu, footer{ display:none !important }
+[data-testid="stToolbar"], [data-testid="stDecoration"], #MainMenu, footer,
+[data-testid="stAppDeployButton"], [data-testid="manage-app-button"]{ display:none !important }
 /* 页脚 */
 .zm-foot{ margin-top:26px; font-size:12px; color:#A08B78; text-align:center; line-height:1.8 }
 </style>
@@ -489,8 +490,8 @@ with st.sidebar:
         help="可多选；标签越具体，行程越贴合你的节奏",
     )
     go = st.button("🚀 生成行程规划", type="primary", use_container_width=True)
-    demo_btn = st.button("⚡ 秒出示范行程（本地示例 0 秒）", use_container_width=True)
-    st.caption("答辩 / 录像用：直接加载预置示范行程，无需等待模型生成")
+    demo_btn = st.button("⚡ 秒出示范行程", use_container_width=True)
+    st.caption("答辩 / 录像用：加载预置示范行程，约 0 秒出结果")
 
     st.divider()
     st.header("⚡ 扰动测试（核心亮点）")
