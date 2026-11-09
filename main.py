@@ -400,6 +400,8 @@ refresh_api_config()
 
 # ---------------- 视觉主题：暖色旅行手帐风 ----------------
 
+WM_TEXT = "智漫游 ZHI MAN YOU 城市旅行智能规划 " * 34
+
 THEME_CSS = """
 <style>
 :root{
@@ -411,15 +413,26 @@ html, body, [data-testid="stAppViewContainer"], .stMarkdown, p, li, span, div{
 }
 .stApp{
   background:
-    radial-gradient(1100px 470px at 6% -14%, #FCE6D4 0%, rgba(252,230,212,0) 62%),
-    radial-gradient(900px 420px at 100% -8%, #E3EFE8 0%, rgba(227,239,232,0) 58%),
-    linear-gradient(180deg,#FDF8F1 0%,#FAF2E5 60%,#F8EFE1 100%);
+    radial-gradient(1200px 540px at 4% -12%, #FFD5B2 0%, rgba(255,213,178,0) 64%),
+    radial-gradient(1020px 500px at 98% -4%, #C2E4D5 0%, rgba(194,228,213,0) 62%),
+    radial-gradient(900px 540px at 86% 98%, #F6BE9E 0%, rgba(246,190,158,0) 66%),
+    radial-gradient(840px 480px at 6% 94%, #D0E6DA 0%, rgba(208,230,218,0) 64%),
+    radial-gradient(760px 420px at 48% 46%, #FFEACB 0%, rgba(255,234,203,0) 72%),
+    linear-gradient(158deg,#FFF8F0 0%,#F9E5CD 36%,#F4DCC4 66%,#EBE8D5 100%);
   background-attachment:fixed;
   color:var(--ink);
 }
+/* 斜向水印：智漫游 · 城市旅行智能规划（真实元素，z-index:-1 垫在内容下方） */
+.zm-wm{
+  position:fixed; top:-18vh; left:-18vw; width:136vw; height:136vh;
+  z-index:-1; pointer-events:none; overflow:hidden;
+  font-size:26px; font-weight:800; letter-spacing:6px; line-height:2.45;
+  color:rgba(178,96,58,.115); word-break:break-all; transform:rotate(-13deg);
+  user-select:none;
+}
 /* 细纸纹，不影响点击 */
 .stApp::after{
-  content:""; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.55;
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.5;
   background-image:radial-gradient(rgba(120,96,72,.07) 1px, transparent 1px);
   background-size:24px 24px;
 }
@@ -490,9 +503,12 @@ hr{ border-color:var(--line) !important }
   background:linear-gradient(120deg,#DF613A,#E98B4C 55%,#2E6F62);
   -webkit-background-clip:text; background-clip:text; color:transparent;
 }
-.zm-sub{ position:relative; font-size:16px; color:#5A4B3E; margin-top:6px; font-weight:600 }
+.zm-sub{
+  position:relative; font-size:24px; line-height:1.35; color:#4A3B2E; margin-top:10px;
+  font-weight:800; letter-spacing:1.5px;
+}
 .zm-desc{ position:relative; font-size:14px; line-height:1.75; color:#6B5A4B; margin:12px 0 14px; max-width:860px }
-.zm-chips{ position:relative; display:flex; flex-wrap:wrap; gap:8px }
+.zm-chips{ position:relative; display:flex; flex-wrap:wrap; gap:8px; margin-top:16px }
 .zm-chips span{
   font-size:12.5px; color:#4B3D31; background:rgba(255,255,255,.8);
   border:1px solid #EFDCC8; border-radius:99px; padding:5px 11px;
@@ -531,15 +547,12 @@ hr{ border-color:var(--line) !important }
 st.markdown(THEME_CSS, unsafe_allow_html=True)
 
 st.markdown(
-    """
+    f"""
+<div class="zm-wm">{WM_TEXT}</div>
 <div class="zm-hero">
   <div class="zm-kicker">全国人工智能应用创新大赛 · 智能体作品</div>
   <h1 class="zm-title">智<span>漫游</span></h1>
   <div class="zm-sub">城市旅行智能规划 Agent</div>
-  <p class="zm-desc">
-    说出城市、天数、预算和偏好，Agent 自己查景点、排顺路动线、算预算、写讲解词，
-    并给每一段路程标好「地铁几站 / 步行多久 / 打车多少钱」；遇到临时闭园或下雨，它能当场改方案并说明理由。
-  </p>
   <div class="zm-chips">
     <span>🗺️ 顺路动线规划</span>
     <span>🚇 景点间交通衔接</span>
