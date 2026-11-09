@@ -123,7 +123,7 @@ def refresh_api_config():
 
 # ---------------- Agent 调用层 ----------------
 
-def call_agent(messages: list) -> str:
+def call_agent(messages: list, max_tokens: int = 4096, temperature: float = 0.4) -> str:
     """非流式兜底调用（流式失败时使用）"""
     if not API_KEY:
         return json.dumps({"error": "未配置 LLM_API_KEY，请编辑项目目录下的 .env 文件"}, ensure_ascii=False)
@@ -132,7 +132,8 @@ def call_agent(messages: list) -> str:
         resp = requests.post(
             url,
             headers={"Authorization": f"Bearer {API_KEY}"},
-            json={"model": MODEL, "messages": messages, "temperature": 0.4, "max_tokens": 4096},
+            json={"model": MODEL, "messages": messages,
+                  "temperature": temperature, "max_tokens": max_tokens},
             timeout=120,
         )
         resp.raise_for_status()
@@ -229,7 +230,26 @@ def build_user_input(
     return base
 
 
-CITY_TOKENS = ("天津", "石家庄", "保定", "正定", "河北")
+BASE_CITY_TOKENS = ("天津", "石家庄", "保定", "正定", "河北")
+CITY_TOKENS = tuple(BASE_CITY_TOKENS)
+
+
+def set_active_city(city: str):
+    """把当前目标城市并入去重时要去掉的前缀词表。
+
+    预置三城的名字本来就写在词表里；换到北京、西安等城市后，
+    模型会写出「北京故宫」和「故宫」，不动态补进去就会漏判重复。
+    """
+    global CITY_TOKENS
+    c = (city or "").strip()
+    extra = []
+    if c:
+        extra.append(c)
+        for suf in ("市", "省", "自治区", "地区", "特别行政区"):
+            if c.endswith(suf) and len(c) > len(suf):
+                extra.append(c[: -len(suf)])
+                break
+    CITY_TOKENS = tuple(dict.fromkeys(list(BASE_CITY_TOKENS) + extra))
 
 
 def item_key(it: dict) -> str:
@@ -567,7 +587,12 @@ if "plan" not in st.session_state:
 
 with st.sidebar:
     st.header("🧳 行程需求")
-    city = st.text_input("目标城市", "天津")
+    city = st.text_input(
+        "目标城市",
+        "天津",
+        help="全国任意城市都能输入。天津 / 石家庄 / 保定 有预置知识库，出图更快；"
+             "其他城市（北京、西安、成都、杭州…）会自动检索当地景点后再规划。",
+    )
     days = st.slider("出行天数", 1, MAX_DAYS, 2)
     budget = st.slider("总预算（元）", 200, 5000, 800, step=100)
     prefs = st.multiselect(
@@ -815,11 +840,72 @@ SPARE_SPOTS = {
 
 def split_spots(city: str, n: int):
     """把城市景点池按片区顺序切成 n 份，供并行分段各自独占，避免撞车。"""
-    pool = SPARE_SPOTS.get(city) or []
+    pool = spot_pool_for(city)
     if not pool or n <= 1:
         return [[] for _ in range(n)]
     size = -(-len(pool) // n)
     return [pool[i * size:(i + 1) * size] for i in range(n)]
+
+
+CITY_SPOT_CACHE = {}
+
+
+def fetch_city_spots(city: str, want: int = 18) -> list:
+    """未预置城市：先快速问模型要一份该城的景点池（约 2—4 秒，结果进程内缓存）。
+
+    有了这份池子，「分区并行 + 景点全程不重复」这套机制对任意城市都成立；
+    取不到就返回空列表，逻辑自动退回纯模型规划，不影响出图。
+    """
+    c = (city or "").strip()
+    if not c:
+        return []
+    if c in CITY_SPOT_CACHE:
+        return CITY_SPOT_CACHE[c]
+    msgs = [
+        {"role": "system", "content": "你是城市旅行规划师，只输出 JSON 数组，不要任何解释文字。"},
+        {
+            "role": "user",
+            "content": (
+                f"列出「{c}」市区及近郊（车程 1 小时内）最经典的 {want} 个旅游去处"
+                f"（景点、历史街区、博物馆、公园），"
+                f"不要餐厅、酒店、演出。按地理片区相邻的顺序排列，名称用 2—8 字常用简称，"
+                f'只输出形如 ["故宫","天坛公园"] 的 JSON 数组。'
+            ),
+        },
+    ]
+    raw = call_agent(msgs, max_tokens=600, temperature=0.2)
+    pool = []
+    try:
+        a, b = raw.find("["), raw.rfind("]")
+        if a >= 0 and b > a:
+            arr = json.loads(raw[a: b + 1])
+
+            def _flat(x):
+                """模型偶尔返回 [["故宫"],...] 或 [{"name":"故宫"}]，统一拍平取名字"""
+                if isinstance(x, str):
+                    yield x
+                elif isinstance(x, dict):
+                    yield str(x.get("name") or x.get("spot") or "")
+                elif isinstance(x, (list, tuple)):
+                    for y in x:
+                        yield from _flat(y)
+
+            for x in arr:
+                for name in _flat(x):
+                    name = re.sub(r"^\d+[.、:：\s]*", "", name.strip())
+                    name = name.split("（")[0].split("(")[0].strip()
+                    if 1 < len(name) <= 12 and name not in pool:
+                        pool.append(name)
+    except Exception as e:
+        print(f"[spots] {c} 景点池解析失败：{e}", flush=True)
+    CITY_SPOT_CACHE[c] = pool
+    print(f"[spots] {c} 自动获取景点池 {len(pool)} 个：{pool[:6]}…", flush=True)
+    return pool
+
+
+def spot_pool_for(city: str) -> list:
+    """取城市景点池：预置三城直接用；其他城市按需现取（带缓存）。"""
+    return SPARE_SPOTS.get(city) or fetch_city_spots(city)
 
 
 def _spare_item(name: str, idx: int) -> dict:
@@ -859,7 +945,7 @@ def drop_duplicate_items(days, city: str = ""):
 
         real = [x for x in kept if x.get("type") != "交通"]
         if len(real) < 2:
-            pool = [n for n in SPARE_SPOTS.get(city, [])
+            pool = [n for n in spot_pool_for(city)
                     if not any(x and (x in item_key({"name": n}) or item_key({"name": n}) in x)
                                for x in seen)]
             for i, name in enumerate(pool[: 2 - len(real)]):
@@ -868,6 +954,45 @@ def drop_duplicate_items(days, city: str = ""):
             if kept:
                 kept.sort(key=lambda x: str(x.get("time", "")))
         day["items"] = kept
+    return days
+
+
+def refill_thin_days(days, city, total_days, budget, prefs, min_items=2):
+    """兜底：去重后某天太空（甚至被清空）时，只针对那一天补排一次。
+
+    并行分段拿到的景点池是切开的，正常不会撞车；但换成没有预置池的城市、
+    或模型无视约束时，宁可多花几秒补一天，也不给用户一个空白的一天。
+    """
+    used = [it.get("name") for d in days for it in (d.get("items") or [])
+            if it.get("type") != "交通" and it.get("name")]
+    sys_msg = {"role": "system", "content": SYSTEM_PROMPT}
+    for d in days:
+        real = [it for it in (d.get("items") or []) if it.get("type") != "交通"]
+        if len(real) >= min_items:
+            continue
+        a = d.get("day") or 1
+        msgs = [sys_msg, {"role": "user", "content": build_user_input(
+            city, total_days, budget, prefs, day_range=(a, a), banned=used[:60])}]
+        seg = normalize_plan(parse_plan(call_agent_stream(msgs, None)))
+        seg_days = [x for x in ((seg or {}).get("days") or []) if isinstance(x, dict)]
+        if not seg_days:
+            print(f"[refill] 第 {a} 天补排失败", flush=True)
+            continue
+        new_items = []
+        for it in (seg_days[0].get("items") or []):
+            if it.get("type") == "交通":
+                continue
+            k = item_key(it)
+            if k and any(x and (x in k or k in x) for x in used):
+                continue
+            new_items.append(it)
+            if k:
+                used.append(k)
+        if new_items:
+            items = [it for it in (d.get("items") or []) if it.get("type") == "交通"] + new_items
+            items.sort(key=lambda x: str(x.get("time", "")))
+            d["items"] = items
+            print(f"[refill] 第 {a} 天补到 {len(new_items)} 个去处", flush=True)
     return days
 
 
@@ -884,6 +1009,7 @@ def generate_parallel(messages: list, city, days, budget, prefs):
         n_seg = 2
     else:
         n_seg = 3
+    set_active_city(city)
     # 天数尽量平均分配，靠前的段多担一天
     sizes = [days // n_seg + (1 if i < days % n_seg else 0) for i in range(n_seg)]
     ranges, cur = [], 1
@@ -954,6 +1080,7 @@ def generate_parallel(messages: list, city, days, budget, prefs):
 
     # 本地兜底：分区后仍撞车的少量景点直接删掉，并从备用池补足每天 2 个去处
     merged["days"] = drop_duplicate_items(merged["days"], city)
+    merged["days"] = refill_thin_days(merged["days"], city, days, budget, prefs)
 
     total = sum(
         (it.get("cost") or 0) for d in merged["days"] for it in (d.get("items") or [])
@@ -980,6 +1107,7 @@ with col1:
             st.warning(f"示范行程加载失败：{e}")
 
     if go:
+        set_active_city(city)
         st.session_state.messages.append(
             {"role": "user", "content": build_user_input(city, days, budget, prefs)}
         )
@@ -1043,6 +1171,10 @@ with col1:
             # 不再为重复景点整篇重排——实测模型多半仍会重复，白等 20 多秒。
             before = len(find_duplicates(plan_final))
             plan_final["days"] = drop_duplicate_items(plan_final["days"], city)
+            with st.spinner("检查每天景点数量，不足的自动补排…"):
+                plan_final["days"] = refill_thin_days(
+                    plan_final["days"], city, days, budget, prefs
+                )
             plan_final["total_cost"] = sum(
                 (it.get("cost") or 0)
                 for d in plan_final["days"]
