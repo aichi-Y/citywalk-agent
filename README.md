@@ -41,11 +41,38 @@ streamlit run main.py --server.port=8000
 python console_demo.py
 ```
 
-## ☁️ JoyCode 一键部署
 
-- 启动命令：`streamlit run main.py --server.port=8000`
-- 在 JoyCode 项目页点击【一键部署】，获得公网链接
-- 注意赛事免费部署实例有运行时长限制，提交与答辩期间保证链接可用
+## 🖼️ 景点照片与社区玩法参考
+
+- 每个景点左侧为**真实实拍照片**（非插画）：共 35 个京津冀景点，源自 Wikimedia Commons 开放许可素材（CC BY / CC BY-SA / 公有领域），
+  统一裁切 4:3、压缩到 800×600，随仓库提交，离线可用；来源清单见 `static/images/photos_credit.json`。
+- 没有专属实拍的景点，使用**同类实景照片**兜底（不虚构为某景点）。
+- 每条行程可一键跳转「小红书」站内搜索（`xiaohongshu.com/search_result?keyword=城市+景点`），
+  用于核对真实游记、拍照机位与避坑信息；模型同时输出 `xhs` 字段，给出一句社区实拍经验。
+- 说明：小红书未提供公开数据接口且限制机器访问，因此**不做实时抓取**，
+  采用「社区经验入提示词 + 站内搜索直达」的方式接入，保证信息可追溯、链接可验证。
+- 抓取与裁切脚本：`tools/fetch_spot_photos.py`、`tools/redownload_by_hash.py`（可复现）。
+
+## 🎨 界面主题
+
+暖米色纸张底 + 旅行手帐风格：渐变 hero 卡（作品定位 + 能力标签）、白色圆角卡片、琥珀色讲解词便签、
+青绿交通标签、红色社区笔记标签；图片统一圆角投影，配色与「城市微旅行」主题一致。
+
+## ☁️ 线上体验（Streamlit Community Cloud）
+
+**公网链接（已验证可匿名访问，无需登录）：**
+
+```
+https://citywalk-agent-inz8ekwz8zcrehe2nbjosa.streamlit.app/
+```
+
+> ⚠️ 注意域名中的 `inz8ekwz8z`（有两个 `z8z` 相连），少一个字符就会跳到 not_found 页面。
+> 代码推送 `main` 分支后平台会自动重新部署，约 1—2 分钟生效。
+
+- 本地启动命令：`streamlit run main.py --server.port=8000`
+- 部署来源：GitHub 仓库 `aichi-Y/citywalk-agent`（`main` 分支，入口 `main.py`）
+- Secrets：`LLM_API_BASE` / `LLM_API_KEY` / `LLM_MODEL`（在 share.streamlit.io → 应用 Settings → Secrets 中维护）
+- 注意赛事免费实例在无访问时会休眠，评委打开时需等待约 30 秒唤醒，答辩前建议先自行访问一次唤醒
 
 ## 🧪 测试用例（对应评审重点）
 
