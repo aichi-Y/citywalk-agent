@@ -183,7 +183,10 @@ def call_agent_stream(messages: list, on_update=None) -> str:
         return call_agent(messages)
 
 
-def build_user_input(city, days, budget, prefs, day_range=None, banned=None):
+def build_user_input(
+    city, days, budget, prefs, day_range=None, banned=None,
+    own_spots=None, other_spots=None,
+):
     head = ""
     if banned:
         head = (
@@ -198,14 +201,26 @@ def build_user_input(city, days, budget, prefs, day_range=None, banned=None):
         f"要求：①每个景点之间必须给出交通方式、乘车站数/线路、耗时与费用，写入 transport 字段；"
         f"②为每个景点选择一个配图类别，写入 img 字段，取值只能是 "
         f"heritage / landmark / museum / nature / food / night / street 之一；"
-        f"③每天 3—4 个条目，desc 不超过 25 字、guide 不超过 30 字，只输出 JSON，不要任何解释性文字。"
+        f"③每天安排 3—4 个景点／美食条目（不少于 3 个），"
+        f"desc 不超过 22 字、guide 不超过 26 字、xhs 不超过 16 字，"
+        f"只输出 JSON，不要任何解释性文字。"
         f"④【景点绝不重复】同一个景点、同一家店、同一个地点全程只出现一次；"
         f"每天的主题片区必须错开（如 D1 老城古迹、D2 博物馆与街区、D3 近郊自然/夜景）。"
     )
+    if own_spots:
+        base += (
+            f"⑤【本段专属景点】第 {day_range[0]}—{day_range[1]} 天只从这些地点里选："
+            f"{'、'.join(own_spots)}；可以在此基础上补充同片区的小众点位。"
+        )
+    if other_spots:
+        base += (
+            f"⑥【其他天数已占用】以下地点已分配给同一次行程的其他天数，本次严禁出现，"
+            f"也不要写成同义或加城市前缀的变体：{'、'.join(other_spots)}。"
+        )
     if day_range:
         a, b = day_range
         base += (
-            f"⑤本次只需输出第 {a}—{b} 天（全程共 {days} 天）的内容，day 字段使用真实天序号；"
+            f"本次只需输出第 {a}—{b} 天（全程共 {days} 天）的内容，day 字段使用真实天序号；"
             f"transport 仍按天内的景点顺序给出。"
             f"注意：必须返回完整的 JSON 对象，结构为 "
             f'{{"city":"","days":[{{"day":{a},"items":[...]}}],"food":[],"total_cost":0,"within_budget":true,"notes":""}}，'
@@ -772,12 +787,31 @@ def fill_missing_days(messages, city, days, budget, prefs, plan):
     return p
 
 
+# 按「片区」成组排列：并行分段时按顺序切块分配给各段，天然互不重叠
 SPARE_SPOTS = {
-    "天津": ["西开教堂", "静园", "广东会馆", "劝业场", "南市食品街", "天津之眼",
-             "瓷房子", "五大道", "古文化街", "天津博物馆", "鼓楼", "意式风情区", "海河公园"],
-    "石家庄": ["河北博物院", "赵州桥", "正定城墙", "隆兴寺", "荣国府", "石家庄水上公园"],
-    "保定": ["古莲花池", "直隶总督署", "大慈阁", "竞秀公园", "保定军校广场"],
+    "天津": [
+        "古文化街", "鼓楼", "广东会馆", "南市食品街", "静园", "瓷房子", "劝业场",
+        "五大道", "西开教堂", "意式风情区", "天津之眼", "海河公园",
+        "天津博物馆", "水上公园", "宁园", "周恩来邓颖超纪念馆",
+    ],
+    "石家庄": [
+        "隆兴寺", "正定城墙", "荣国府", "开元寺", "正定古城",
+        "河北博物院", "长安公园", "石家庄水上公园", "世纪公园", "赵州桥",
+    ],
+    "保定": [
+        "直隶总督署", "古莲花池", "大慈阁", "保定军校广场", "竞秀公园",
+        "保定市博物馆", "东湖公园", "西大街",
+    ],
 }
+
+
+def split_spots(city: str, n: int):
+    """把城市景点池按片区顺序切成 n 份，供并行分段各自独占，避免撞车。"""
+    pool = SPARE_SPOTS.get(city) or []
+    if not pool or n <= 1:
+        return [[] for _ in range(n)]
+    size = -(-len(pool) // n)
+    return [pool[i * size:(i + 1) * size] for i in range(n)]
 
 
 def _spare_item(name: str, idx: int) -> dict:
@@ -818,10 +852,11 @@ def drop_duplicate_items(days, city: str = ""):
         real = [x for x in kept if x.get("type") != "交通"]
         if len(real) < 2:
             pool = [n for n in SPARE_SPOTS.get(city, [])
-                    if not any(x and (x in n or n in x) for x in seen)]
+                    if not any(x and (x in item_key({"name": n}) or item_key({"name": n}) in x)
+                               for x in seen)]
             for i, name in enumerate(pool[: 2 - len(real)]):
                 kept.append(_spare_item(name, len(real) + i))
-                seen.add(name)
+                seen.add(item_key({"name": name}))
             if kept:
                 kept.sort(key=lambda x: str(x.get("time", "")))
         day["items"] = kept
@@ -829,62 +864,69 @@ def drop_duplicate_items(days, city: str = ""):
 
 
 def generate_parallel(messages: list, city, days, budget, prefs):
-    """两段接力生成：先出第 1 段，再把第 1 段已用景点作为「禁用清单」生成第 2 段。
+    """分区并行生成：把景点池按片区切成互不重叠的几份，各段同时开跑。
 
-    以前是两段并行，速度虽快，但两段互相不知道对方排了什么，热门景点必然撞车
-    （天津之眼、狗不理、古文化街经常两天都排）。改成接力后从源头避免重复，
-    每段都更短，总耗时接近单次生成。
+    速度：3 段并行 → 墙钟时间约等于「生成 2 天」的时间（5 天约 20 秒，而不是 50 秒）。
+    不重复：每段提示词里写死「本段专属景点」+「其他天已占用、严禁出现」，
+    从源头切开景点池；模型偶尔仍越界时，再由 drop_duplicate_items 本地清理兜底。
     """
-    half = (days + 1) // 2
-    ranges = [(1, half), (half + 1, days)]
+    if days <= 1:
+        n_seg = 1
+    elif days == 2:
+        n_seg = 2
+    else:
+        n_seg = 3
+    # 天数尽量平均分配，靠前的段多担一天
+    sizes = [days // n_seg + (1 if i < days % n_seg else 0) for i in range(n_seg)]
+    ranges, cur = [], 1
+    for s in sizes:
+        ranges.append((cur, cur + s - 1))
+        cur += s
+
+    groups = split_spots(city, n_seg)
     sys_msg = messages[0]
 
-    def work(rng, banned=None):
+    def work(i):
+        own = groups[i] if i < len(groups) else []
+        other = [n for j, g in enumerate(groups) if j != i for n in g]
         msgs = [
             sys_msg,
             {
                 "role": "user",
                 "content": build_user_input(
-                    city, days, budget, prefs, day_range=rng, banned=banned
+                    city, days, budget, prefs, day_range=ranges[i],
+                    own_spots=own or None, other_spots=other or None,
                 ),
             },
         ]
-        return call_agent_stream(msgs, None)
-
-    def seg_plan(reply, want):
+        reply = call_agent_stream(msgs, None)
         p = normalize_plan(parse_plan(reply))
         if not p:
             return None
+        want = ranges[i][1] - ranges[i][0] + 1
         pd = [d for d in (p.get("days") or []) if isinstance(d, dict)]
         if len(pd) < want:
+            print(f"[segment] 第 {ranges[i][0]}—{ranges[i][1]} 段天数不足", flush=True)
             return None
         p["days"] = pd[:want]
         return p
 
-    p1 = seg_plan(work(ranges[0]), ranges[0][1] - ranges[0][0] + 1)
-    if p1 is None:
-        print(f"[segment] 第 1 段失败 days={days}", flush=True)
+    if n_seg == 1:
+        plans = [work(0)]
+    else:
+        with ThreadPoolExecutor(max_workers=n_seg) as ex:
+            plans = list(ex.map(work, range(n_seg)))
+
+    if any(p is None for p in plans):
+        print(f"[segment] 有分段失败 days={days}，回退单次生成", flush=True)
         return None
 
-    used = all_place_names(p1)
-    p2 = seg_plan(work(ranges[1], banned=used), ranges[1][1] - ranges[1][0] + 1)
-    if p2 is None:
-        print(f"[segment] 第 2 段失败 days={days}", flush=True)
-        return None
-
-    hits = [n for n in all_place_names(p2) if n in used]
-    if hits:
-        # 不重复请求模型（实测多半无效还多等 20 多秒），直接交给下面的本地清理
-        print(f"[segment] 第 2 段仍重复 {hits}，交由本地清理", flush=True)
-
-    plans = [p1, p2]
     merged = {"city": city, "days": [], "food": [], "notes": ""}
-    for rng, p in zip(ranges, plans):
-        a, b = rng
+    for i, p in enumerate(plans):
+        a, b = ranges[i]
         want = b - a + 1
         pdays = [d for d in (p.get("days") or []) if isinstance(d, dict)]
         if len(pdays) < want:
-            print(f"[segment] 第 {a}—{b} 段天数不足，回退单次生成", flush=True)
             return None
         merged["days"].extend(pdays[:want])
         merged["city"] = p.get("city") or merged["city"]
@@ -902,6 +944,7 @@ def generate_parallel(messages: list, city, days, budget, prefs):
         print(f"[segment] 天数不符 days={days} got={len(merged['days'])}", flush=True)
         return None
 
+    # 本地兜底：分区后仍撞车的少量景点直接删掉，并从备用池补足每天 2 个去处
     merged["days"] = drop_duplicate_items(merged["days"], city)
 
     total = sum(
@@ -934,7 +977,7 @@ with col1:
         )
         cache = st.session_state.setdefault("cache", {})
         # 缓存键只按"输入参数"取，重复点同一组参数必命中（不受聊天历史影响）
-        ck = f"v4|{city}|{days}|{budget}|{'/'.join(prefs)}"
+        ck = f"v5|{city}|{days}|{budget}|{'/'.join(prefs)}"
 
         if ck in cache:
             st.caption("⚡ 命中缓存，同一组参数秒出（演示时重复提问不用再等）")
@@ -942,10 +985,10 @@ with col1:
         else:
             reply = None
             if days >= 2:
-                half = (days + 1) // 2
+                n_seg = 2 if days == 2 else 3
                 with st.spinner(
-                    f"分两段接力生成（第 1—{half} 天 / 第 {half + 1}—{days} 天），"
-                    "后段会自动避开前段去过的景点…"
+                    f"分区并行生成（{n_seg} 段同时进行，每段景点互不重叠），"
+                    "通常 20 秒左右出完整行程…"
                 ):
                     merged = generate_parallel(
                         st.session_state.messages, city, days, budget, prefs
@@ -953,7 +996,7 @@ with col1:
                 if merged:
                     reply = json.dumps(merged, ensure_ascii=False)
                     st.caption(
-                        f"⚡ 已分两段生成并合并（第 1—{half} 天 / 第 {half + 1}—{days} 天），景点全程不重复"
+                        f"⚡ 已分区并行生成并合并（{n_seg} 段同时进行），景点全程不重复"
                     )
                     print(f"[parallel] ok days={days} items={sum(len(d.get('items', [])) for d in merged['days'])}", flush=True)
                 else:
@@ -987,39 +1030,9 @@ with col1:
             else:
                 st.warning(f"本次只生成了不足 {days} 天的行程，请再点一次「生成行程规划」。")
 
-        # 景点不重复：单次生成路径（1 天或并行回退）出现重复时，带禁用清单重排一次
         if plan_final:
-            dups = find_duplicates(plan_final)
-            if dups:
-                banned = []
-                for n, _, _ in dups:
-                    if n not in banned:
-                        banned.append(n)
-                print(f"[dedupe] 重复景点 {banned}，带禁用清单重排一次", flush=True)
-                with st.spinner("检测到重复景点，正在替换后重新排程…"):
-                    retry_reply = generate_with_repair(
-                        [
-                            st.session_state.messages[0],
-                            {
-                                "role": "user",
-                                "content": build_user_input(
-                                    city, days, budget, prefs, banned=banned
-                                ),
-                            },
-                        ],
-                        "正在替换重复景点…",
-                        expect_days=days,
-                    )
-                retry_plan = enforce_days(parse_plan(retry_reply), days, budget)
-                if retry_plan and not find_duplicates(retry_plan):
-                    plan_final = retry_plan
-                    reply = json.dumps(plan_final, ensure_ascii=False)
-                    st.session_state.messages[-1] = {"role": "assistant", "content": reply}
-                    cache[ck] = reply
-                    print("[dedupe] 重排成功，重复已消除", flush=True)
-
-        if plan_final:
-            # 最后一道本地清理：模型仍无视清单时，直接删掉后面重复的景点
+            # 景点不重复：本地清理（删掉后面重复的景点，并从备用池补足每天 2 个去处）。
+            # 不再为重复景点整篇重排——实测模型多半仍会重复，白等 20 多秒。
             before = len(find_duplicates(plan_final))
             plan_final["days"] = drop_duplicate_items(plan_final["days"], city)
             plan_final["total_cost"] = sum(
