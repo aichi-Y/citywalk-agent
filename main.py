@@ -557,7 +557,7 @@ def render_plan(plan: dict):
         st.error(plan["error"])
         return
     city = plan.get("city", "")
-    st.subheader(f"📍 {city} 行程方案")
+    st.subheader(f"📍 {city} 行程方案（共 {len(plan.get('days') or [])} 天）")
     for day in plan.get("days", []):
         with st.expander(f"第 {day.get('day')} 天", expanded=True):
             items = day.get("items", [])
@@ -614,8 +614,8 @@ def generate_with_repair(messages: list, tip: str, expect_days: int = 0) -> str:
         if p is None:
             return False
         if expect_days:
-            have = {d.get("day") for d in p.get("days") or []}
-            return len({h for h in have if isinstance(h, int)}) >= expect_days
+            ds = [d for d in (p.get("days") or []) if isinstance(d, dict)]
+            return len(ds) >= expect_days
         return True
 
     reply = run_agent(messages, tip)
@@ -663,6 +663,54 @@ def normalize_plan(p):
     return None
 
 
+def enforce_days(plan, days: int, budget: float = 0):
+    """最后一道闸门：保证输出天数与用户选择完全一致（1 天就是 1 天）。
+
+    - 少于请求天数：返回 None（视为失败，上层重试或提示）
+    - 多于请求天数：截断
+    - 天序号一律重排为 1..days，避免模型重复写 day 导致显示混乱
+    """
+    p = normalize_plan(plan)
+    if not p:
+        return None
+    ds = [d for d in (p.get("days") or []) if isinstance(d, dict)]
+    if len(ds) < days:
+        return None
+    p["days"] = ds[:days]
+    for i, d in enumerate(p["days"], start=1):
+        d["day"] = i
+    total = sum(
+        (it.get("cost") or 0) for d in p["days"] for it in (d.get("items") or [])
+    )
+    p["total_cost"] = total
+    if budget:
+        p["within_budget"] = total <= budget
+    return p
+
+
+def fill_missing_days(messages, city, days, budget, prefs, plan):
+    """单次生成天数不足时，只补缺失的那几天（逐天串行，通常只补 1 天）"""
+    p = normalize_plan(plan) or {"city": city, "days": [], "food": [], "notes": ""}
+    ds = [d for d in (p.get("days") or []) if isinstance(d, dict)]
+    p["days"] = ds
+    sys_msg = messages[0]
+    for a in range(len(ds) + 1, days + 1):
+        msgs = [
+            sys_msg,
+            {
+                "role": "user",
+                "content": build_user_input(city, days, budget, prefs, day_range=(a, a)),
+            },
+        ]
+        seg = normalize_plan(parse_plan(call_agent_stream(msgs, None)))
+        seg_days = [d for d in ((seg or {}).get("days") or []) if isinstance(d, dict)]
+        if not seg_days:
+            print(f"[fill] 第 {a} 天补齐失败", flush=True)
+            return None
+        p["days"].append(seg_days[0])
+    return p
+
+
 def generate_parallel(messages: list, city, days, budget, prefs):
     """天数≥2：拆成两段并行生成，墙钟时间约减半；任一段失败或天数不齐返回 None，由上层回退单次生成"""
     half = (days + 1) // 2
@@ -690,35 +738,31 @@ def generate_parallel(messages: list, city, days, budget, prefs):
     merged = {"city": city, "days": [], "food": [], "notes": ""}
     for rng, p in zip(ranges, plans):
         a, b = rng
-        want = list(range(a, b + 1))
-        pdays = p.get("days") or []
-        # 段内天数数量对上但天序号跑偏时，按期望区间纠正
-        if len(pdays) == len(want) and [d.get("day") for d in pdays] != want:
-            for d, nd in zip(pdays, want):
-                d["day"] = nd
+        want = b - a + 1
+        pdays = [d for d in (p.get("days") or []) if isinstance(d, dict)]
+        # 段内天数不足：整条链路作废，回退单次生成（不允许悄悄少天）
+        if len(pdays) < want:
+            print(
+                f"[parallel] 第 {a}—{b} 段只返回 {len(pdays)} 天，回退单次生成 days={days}",
+                flush=True,
+            )
+            return None
+        # 多出来的天直接截断，绝不把两段内容并成一天，也绝不重复计天
+        merged["days"].extend(pdays[:want])
         merged["city"] = p.get("city") or merged["city"]
-        merged["days"].extend(pdays)
         for f in p.get("food") or []:
             if f not in merged["food"]:
                 merged["food"].append(f)
         if p.get("notes"):
             merged["notes"] = (merged["notes"] + " " + str(p["notes"])).strip()
 
-    # 按天序号排序并按 day 去重（保留先出现的）
-    merged["days"].sort(key=lambda d: d.get("day") or 0)
-    seen, uniq = set(), []
-    for d in merged["days"]:
-        dd = d.get("day")
-        if dd in seen:
-            continue
-        seen.add(dd)
-        uniq.append(d)
-    merged["days"] = uniq
+    # 完全按「段顺序 + 段内顺序」重新编号 1..days，不信任模型自己写的 day 字段，
+    # 这样 1 天就是 1 天、2 天就是 2 天，绝不会因天序号重复被去重而少天
+    for i, d in enumerate(merged["days"], start=1):
+        d["day"] = i
 
-    # 天数必须齐全，否则视为失败，回退单次全量生成（宁可慢，不能少天）
-    missing = [i for i in range(1, days + 1) if i not in seen]
-    if missing:
-        print(f"[parallel] 天数缺失 days={days} missing={missing}", flush=True)
+    if len(merged["days"]) != days:
+        print(f"[parallel] 天数不符 days={days} got={len(merged['days'])}", flush=True)
         return None
 
     total = sum(
@@ -751,7 +795,7 @@ with col1:
         )
         cache = st.session_state.setdefault("cache", {})
         # 缓存键只按"输入参数"取，重复点同一组参数必命中（不受聊天历史影响）
-        ck = f"v3|{city}|{days}|{budget}|{'/'.join(prefs)}"
+        ck = f"v4|{city}|{days}|{budget}|{'/'.join(prefs)}"
 
         if ck in cache:
             st.caption("⚡ 命中缓存，同一组参数秒出（演示时重复提问不用再等）")
@@ -785,7 +829,25 @@ with col1:
                 cache[ck] = reply
 
         st.session_state.messages.append({"role": "assistant", "content": reply})
-        st.session_state.plan = parse_plan(reply)
+        plan_final = enforce_days(parse_plan(reply), days, budget)
+        if plan_final is None:
+            # 兜底：模型这次天数不够，逐天补齐（通常只补 1 天），保证不多不少
+            with st.spinner(f"补齐缺失天数（目标 {days} 天）…"):
+                plan_final = enforce_days(
+                    fill_missing_days(
+                        st.session_state.messages, city, days, budget, prefs,
+                        parse_plan(reply),
+                    ),
+                    days,
+                    budget,
+                )
+            if plan_final is not None:
+                reply = json.dumps(plan_final, ensure_ascii=False)
+                st.session_state.messages[-1] = {"role": "assistant", "content": reply}
+                cache[ck] = reply
+            else:
+                st.warning(f"本次只生成了不足 {days} 天的行程，请再点一次「生成行程规划」。")
+        st.session_state.plan = plan_final or parse_plan(reply)
         st.session_state.last_reply = reply
 
     if disturb_btn and disturb:
@@ -800,7 +862,10 @@ with col1:
         )
         reply = generate_with_repair(st.session_state.messages, "Agent 正在重新规划…")
         st.session_state.messages.append({"role": "assistant", "content": reply})
-        st.session_state.plan = parse_plan(reply)
+        keep_days = len((st.session_state.get("plan") or {}).get("days") or []) or days
+        st.session_state.plan = (
+            enforce_days(parse_plan(reply), keep_days, budget) or parse_plan(reply)
+        )
         st.session_state.last_reply = reply
 
     if "last_reply" in st.session_state:
