@@ -309,7 +309,8 @@ def image_for(item: dict):
 
 def xhs_search_url(city: str, name: str) -> str:
     """小红书站内搜索：直接跳到该景点的真实笔记列表"""
-    kw = f"{city}{name}".strip() or name
+    kw = name if (not city or city in name) else f"{city}{name}"
+    kw = kw.strip() or name
     return "https://www.xiaohongshu.com/search_result?keyword=" + urllib.parse.quote(kw)
 
 
