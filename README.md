@@ -41,11 +41,21 @@ streamlit run main.py --server.port=8000
 python console_demo.py
 ```
 
-## ☁️ JoyCode 一键部署
+## ☁️ 线上体验（Streamlit Community Cloud）
 
-- 启动命令：`streamlit run main.py --server.port=8000`
-- 在 JoyCode 项目页点击【一键部署】，获得公网链接
-- 注意赛事免费部署实例有运行时长限制，提交与答辩期间保证链接可用
+**公网链接（已验证可匿名访问，无需登录）：**
+
+```
+https://citywalk-agent-inz8ekwz8zcrehe2nbjosa.streamlit.app/
+```
+
+> ⚠️ 注意域名中的 `inz8ekwz8z`（有两个 `z8z` 相连），少一个字符就会跳到 not_found 页面。
+> 代码推送 `main` 分支后平台会自动重新部署，约 1—2 分钟生效。
+
+- 本地启动命令：`streamlit run main.py --server.port=8000`
+- 部署来源：GitHub 仓库 `aichi-Y/citywalk-agent`（`main` 分支，入口 `main.py`）
+- Secrets：`LLM_API_BASE` / `LLM_API_KEY` / `LLM_MODEL`（在 share.streamlit.io → 应用 Settings → Secrets 中维护）
+- 注意赛事免费实例在无访问时会休眠，评委打开时需等待约 30 秒唤醒，答辩前建议先自行访问一次唤醒
 
 ## 🧪 测试用例（对应评审重点）
 
