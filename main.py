@@ -19,6 +19,7 @@
 
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor
 
 import requests
 import streamlit as st
@@ -180,15 +181,22 @@ def call_agent_stream(messages: list, on_update=None) -> str:
         return call_agent(messages)
 
 
-def build_user_input(city, days, budget, prefs):
-    return (
+def build_user_input(city, days, budget, prefs, day_range=None):
+    base = (
         f"请为我规划行程。目标城市：{city}；出行天数：{days} 天；"
         f"总预算：{budget} 元；偏好标签：{'、'.join(prefs) if prefs else '不限'}。"
         f"要求：①每个景点之间必须给出交通方式、乘车站数/线路、耗时与费用，写入 transport 字段；"
         f"②为每个景点选择一个配图类别，写入 img 字段，取值只能是 "
         f"heritage / landmark / museum / nature / food / night / street 之一；"
-        f"③每天 3—4 个条目即可，讲解词控制在 40 字以内，只输出 JSON，不要任何解释性文字。"
+        f"③每天 3—4 个条目，desc 不超过 25 字、guide 不超过 30 字，只输出 JSON，不要任何解释性文字。"
     )
+    if day_range:
+        a, b = day_range
+        base += (
+            f"④本次只需输出第 {a}—{b} 天（全程共 {days} 天）的 days 对象，"
+            f"day 字段使用真实天序号；transport 仍按天内的景点顺序给出。"
+        )
+    return base
 
 
 def parse_plan(text: str):
@@ -239,6 +247,10 @@ def guess_image(item: dict) -> str:
 
 
 def image_path(key: str) -> str:
+    """优先用小尺寸缩略图（渲染更快），缺失时回退原图"""
+    thumb = os.path.join(IMAGE_DIR, "thumbs", f"{key}.jpg")
+    if os.path.exists(thumb):
+        return thumb
     path = os.path.join(IMAGE_DIR, f"{key}.jpg")
     return path if os.path.exists(path) else os.path.join(IMAGE_DIR, "heritage.jpg")
 
@@ -295,11 +307,12 @@ def render_item(item: dict):
     with left:
         if itype != "交通":
             img = image_path(guess_image(item))
-            try:
-                # 图片宽度自适应列宽，避免窄屏时压到右侧文字
-                st.image(img, width="stretch")
-            except Exception:
-                st.image(img, width=120)
+            for kwargs in ({"width": "stretch", "output_format": "JPEG"}, {"width": "stretch"}, {"width": 120}):
+                try:
+                    st.image(img, **kwargs)
+                    break
+                except Exception:
+                    continue
     with right:
         st.markdown(head)
         if item.get("desc"):
@@ -376,7 +389,49 @@ def generate_with_repair(messages: list, tip: str) -> str:
         {"role": "user", "content": "上面的 JSON 不完整或格式有误，请重新输出一份完整、合法、能被 json.loads 解析的 JSON，不要任何解释文字。"},
     ]
     retry = run_agent(nudge, "输出格式异常，正在自动修正一次…")
+    print(f"[repair] 首次输出解析失败，已重试；重试结果可解析={parse_plan(retry) is not None}", flush=True)
     return retry if parse_plan(retry) is not None else reply
+
+
+def generate_parallel(messages: list, city, days, budget, prefs):
+    """天数≥2：拆成两段并行生成，墙钟时间约减半；任一段失败返回 None，由上层回退单次生成"""
+    half = (days + 1) // 2
+    ranges = [(1, half), (half + 1, days)]
+    sys_msg = messages[0]
+
+    def work(rng):
+        msgs = [
+            sys_msg,
+            {"role": "user", "content": build_user_input(city, days, budget, prefs, day_range=rng)},
+        ]
+        return call_agent_stream(msgs, None)
+
+    try:
+        with ThreadPoolExecutor(max_workers=2) as ex:
+            replies = list(ex.map(work, ranges))
+    except Exception:
+        return None
+
+    plans = [parse_plan(r) for r in replies]
+    if any(p is None for p in plans) or any("error" in p for p in plans):
+        return None
+
+    merged = {"city": city, "days": [], "food": [], "notes": ""}
+    for p in plans:
+        merged["city"] = p.get("city") or merged["city"]
+        merged["days"].extend(p.get("days") or [])
+        for f in p.get("food") or []:
+            if f not in merged["food"]:
+                merged["food"].append(f)
+        if p.get("notes"):
+            merged["notes"] = (merged["notes"] + " " + str(p["notes"])).strip()
+    merged["days"].sort(key=lambda d: d.get("day", 0))
+    total = sum(
+        (it.get("cost") or 0) for d in merged["days"] for it in (d.get("items") or [])
+    )
+    merged["total_cost"] = total
+    merged["within_budget"] = total <= budget
+    return merged
 
 
 with col1:
@@ -384,10 +439,40 @@ with col1:
         st.session_state.messages.append(
             {"role": "user", "content": build_user_input(city, days, budget, prefs)}
         )
-        reply = generate_with_repair(
-            st.session_state.messages,
-            "Agent 正在检索景点信息、规划路线并衔接交通…（已开启流式输出，首字即出）",
-        )
+        cache = st.session_state.setdefault("cache", {})
+        # 缓存键只按"输入参数"取，重复点同一组参数必命中（不受聊天历史影响）
+        ck = f"v2|{city}|{days}|{budget}|{'/'.join(prefs)}"
+
+        if ck in cache:
+            st.caption("⚡ 命中缓存，同一组参数秒出（演示时重复提问不用再等）")
+            reply = cache[ck]
+        else:
+            reply = None
+            if days >= 2:
+                half = (days + 1) // 2
+                with st.spinner(
+                    f"加速模式：拆成 2 段并行生成（第 1—{half} 天 / 第 {half + 1}—{days} 天），"
+                    "等待时间约为单线程的一半…"
+                ):
+                    merged = generate_parallel(
+                        st.session_state.messages, city, days, budget, prefs
+                    )
+                if merged:
+                    reply = json.dumps(merged, ensure_ascii=False)
+                    st.caption(
+                        f"⚡ 加速模式：行程由 2 段并行生成后自动合并（第 1—{half} 天 / 第 {half + 1}—{days} 天）"
+                    )
+                    print(f"[parallel] ok days={days} items={sum(len(d.get('items', [])) for d in merged['days'])}", flush=True)
+                else:
+                    print(f"[parallel] fallback days={days}", flush=True)
+            if reply is None:
+                reply = generate_with_repair(
+                    st.session_state.messages,
+                    "Agent 正在检索景点信息、规划路线并衔接交通…（已开启流式输出，首字即出）",
+                )
+            if '"error"' not in reply[:40]:
+                cache[ck] = reply
+
         st.session_state.messages.append({"role": "assistant", "content": reply})
         st.session_state.plan = parse_plan(reply)
         st.session_state.last_reply = reply
