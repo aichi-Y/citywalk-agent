@@ -195,8 +195,11 @@ def build_user_input(city, days, budget, prefs, day_range=None):
     if day_range:
         a, b = day_range
         base += (
-            f"④本次只需输出第 {a}—{b} 天（全程共 {days} 天）的 days 对象，"
-            f"day 字段使用真实天序号；transport 仍按天内的景点顺序给出。"
+            f"④本次只需输出第 {a}—{b} 天（全程共 {days} 天）的内容，day 字段使用真实天序号；"
+            f"transport 仍按天内的景点顺序给出。"
+            f"注意：必须返回完整的 JSON 对象，结构为 "
+            f'{{"city":"","days":[{{"day":{a},"items":[...]}}],"food":[],"total_cost":0,"within_budget":true,"notes":""}}，'
+            f"即 days 数组里只包含第 {a}—{b} 天（共 {b - a + 1} 个元素），不要把单个 day 对象直接当作根节点。"
         )
     return base
 
@@ -603,22 +606,65 @@ def run_agent(messages: list, tip: str) -> str:
     return reply
 
 
-def generate_with_repair(messages: list, tip: str) -> str:
-    """生成 + 自愈：若 JSON 不完整（被截断/格式错），自动让模型重出一遍"""
+def generate_with_repair(messages: list, tip: str, expect_days: int = 0) -> str:
+    """生成 + 自愈：若 JSON 不完整（被截断/格式错）或天数不够，自动让模型重出一遍"""
+
+    def acceptable(text: str) -> bool:
+        p = normalize_plan(parse_plan(text))
+        if p is None:
+            return False
+        if expect_days:
+            have = {d.get("day") for d in p.get("days") or []}
+            return len({h for h in have if isinstance(h, int)}) >= expect_days
+        return True
+
     reply = run_agent(messages, tip)
-    if parse_plan(reply) is not None or '"error"' in reply[:40]:
+    if acceptable(reply) or '"error"' in reply[:40]:
         return reply
     nudge = messages + [
         {"role": "assistant", "content": reply},
-        {"role": "user", "content": "上面的 JSON 不完整或格式有误，请重新输出一份完整、合法、能被 json.loads 解析的 JSON，不要任何解释文字。"},
+        {
+            "role": "user",
+            "content": (
+                f"上面的 JSON 不完整、格式有误或天数不足（应为 {expect_days} 天），"
+                "请重新输出一份完整、合法、能被 json.loads 解析的 JSON，"
+                "days 数组必须按第 1 天到第 %d 天逐天给出，不要任何解释文字。" % (expect_days or 1)
+            ),
+        },
     ]
     retry = run_agent(nudge, "输出格式异常，正在自动修正一次…")
-    print(f"[repair] 首次输出解析失败，已重试；重试结果可解析={parse_plan(retry) is not None}", flush=True)
-    return retry if parse_plan(retry) is not None else reply
+    print(
+        f"[repair] 首次输出不可用，已重试；重试结果可解析={parse_plan(retry) is not None} "
+        f"天数达标={acceptable(retry)}",
+        flush=True,
+    )
+    return retry if acceptable(retry) else reply
+
+
+def normalize_plan(p):
+    """把模型可能返回的多种结构统一成 {"days": [...]}。
+
+    实测坑：当只要求生成某一天（day_range=(3,3)）时，模型有时会把单个 day 对象
+    直接当根节点返回 {"day":3,"items":[...]}，此前会让合并结果少掉这一天。
+    """
+    if not isinstance(p, dict):
+        return None
+    if isinstance(p.get("days"), list) and p["days"]:
+        return p
+    if "day" in p and isinstance(p.get("items"), list):
+        return {
+            "city": p.get("city", ""),
+            "days": [p],
+            "food": p.get("food") or [],
+            "total_cost": p.get("total_cost"),
+            "within_budget": p.get("within_budget"),
+            "notes": p.get("notes", ""),
+        }
+    return None
 
 
 def generate_parallel(messages: list, city, days, budget, prefs):
-    """天数≥2：拆成两段并行生成，墙钟时间约减半；任一段失败返回 None，由上层回退单次生成"""
+    """天数≥2：拆成两段并行生成，墙钟时间约减半；任一段失败或天数不齐返回 None，由上层回退单次生成"""
     half = (days + 1) // 2
     ranges = [(1, half), (half + 1, days)]
     sys_msg = messages[0]
@@ -636,20 +682,45 @@ def generate_parallel(messages: list, city, days, budget, prefs):
     except Exception:
         return None
 
-    plans = [parse_plan(r) for r in replies]
-    if any(p is None for p in plans) or any("error" in p for p in plans):
+    plans = [normalize_plan(parse_plan(r)) for r in replies]
+    if any(p is None for p in plans):
+        print(f"[parallel] 分段解析失败 days={days}", flush=True)
         return None
 
     merged = {"city": city, "days": [], "food": [], "notes": ""}
-    for p in plans:
+    for rng, p in zip(ranges, plans):
+        a, b = rng
+        want = list(range(a, b + 1))
+        pdays = p.get("days") or []
+        # 段内天数数量对上但天序号跑偏时，按期望区间纠正
+        if len(pdays) == len(want) and [d.get("day") for d in pdays] != want:
+            for d, nd in zip(pdays, want):
+                d["day"] = nd
         merged["city"] = p.get("city") or merged["city"]
-        merged["days"].extend(p.get("days") or [])
+        merged["days"].extend(pdays)
         for f in p.get("food") or []:
             if f not in merged["food"]:
                 merged["food"].append(f)
         if p.get("notes"):
             merged["notes"] = (merged["notes"] + " " + str(p["notes"])).strip()
-    merged["days"].sort(key=lambda d: d.get("day", 0))
+
+    # 按天序号排序并按 day 去重（保留先出现的）
+    merged["days"].sort(key=lambda d: d.get("day") or 0)
+    seen, uniq = set(), []
+    for d in merged["days"]:
+        dd = d.get("day")
+        if dd in seen:
+            continue
+        seen.add(dd)
+        uniq.append(d)
+    merged["days"] = uniq
+
+    # 天数必须齐全，否则视为失败，回退单次全量生成（宁可慢，不能少天）
+    missing = [i for i in range(1, days + 1) if i not in seen]
+    if missing:
+        print(f"[parallel] 天数缺失 days={days} missing={missing}", flush=True)
+        return None
+
     total = sum(
         (it.get("cost") or 0) for d in merged["days"] for it in (d.get("items") or [])
     )
@@ -680,7 +751,7 @@ with col1:
         )
         cache = st.session_state.setdefault("cache", {})
         # 缓存键只按"输入参数"取，重复点同一组参数必命中（不受聊天历史影响）
-        ck = f"v2|{city}|{days}|{budget}|{'/'.join(prefs)}"
+        ck = f"v3|{city}|{days}|{budget}|{'/'.join(prefs)}"
 
         if ck in cache:
             st.caption("⚡ 命中缓存，同一组参数秒出（演示时重复提问不用再等）")
@@ -708,6 +779,7 @@ with col1:
                 reply = generate_with_repair(
                     st.session_state.messages,
                     "Agent 正在检索景点信息、规划路线并衔接交通…（已开启流式输出，首字即出）",
+                    expect_days=days,
                 )
             if '"error"' not in reply[:40]:
                 cache[ck] = reply
