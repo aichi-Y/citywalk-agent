@@ -19,6 +19,8 @@
 
 import json
 import os
+import re
+import urllib.parse
 from concurrent.futures import ThreadPoolExecutor
 
 import requests
@@ -247,7 +249,7 @@ def guess_image(item: dict) -> str:
 
 
 def image_path(key: str) -> str:
-    """优先用小尺寸缩略图（渲染更快），缺失时回退原图"""
+    """类别兜底图：优先缩略图（渲染快），缺失时回退原图"""
     thumb = os.path.join(IMAGE_DIR, "thumbs", f"{key}.jpg")
     if os.path.exists(thumb):
         return thumb
@@ -255,14 +257,218 @@ def image_path(key: str) -> str:
     return path if os.path.exists(path) else os.path.join(IMAGE_DIR, "heritage.jpg")
 
 
+# ---------------- 景点实拍照片（Wikimedia Commons 开放许可） ----------------
+
+SPOT_DIR = os.path.join(IMAGE_DIR, "spots")
+PHOTO_INDEX = os.path.join(IMAGE_DIR, "photos_credit.json")
+
+
+@st.cache_data(show_spinner=False)
+def load_spot_index():
+    """景点名 -> 本地实拍图路径（只收录确实下载成功的）"""
+    idx = {}
+    try:
+        with open(PHOTO_INDEX, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:
+        return idx
+    for key, meta in data.items():
+        p = os.path.join(SPOT_DIR, f"{key}.jpg")
+        name = (meta or {}).get("name") or ""
+        if name and os.path.exists(p):
+            idx[name] = p
+    return idx
+
+
+def clean_spot_name(s: str) -> str:
+    s = re.sub(r"[（(].*?[)）]", "", str(s))
+    return re.sub(r"[\s·、,，。:：/]+", "", s)
+
+
+def photo_for(item: dict):
+    """按景点名最长匹配本地实拍照片；匹配不到返回 None"""
+    name = clean_spot_name(item.get("name", ""))
+    if not name:
+        return None
+    idx = load_spot_index()
+    best = None
+    for spot, path in idx.items():
+        cs = clean_spot_name(spot)
+        if cs and cs in name and (best is None or len(cs) > best[0]):
+            best = (len(cs), path)
+    return best[1] if best else None
+
+
+def image_for(item: dict):
+    """返回 (图片路径, 是否为该景点实拍)"""
+    real = photo_for(item)
+    if real:
+        return real, True
+    return image_path(guess_image(item)), False
+
+
+def xhs_search_url(city: str, name: str) -> str:
+    """小红书站内搜索：直接跳到该景点的真实笔记列表"""
+    kw = f"{city}{name}".strip() or name
+    return "https://www.xiaohongshu.com/search_result?keyword=" + urllib.parse.quote(kw)
+
+
 # ---------------- Streamlit 界面 ----------------
 
 st.set_page_config(page_title="智漫游 · 城市旅行智能规划 Agent", page_icon="🧭", layout="wide")
 refresh_api_config()
-st.title("🧭 智漫游 —— 城市旅行智能规划 Agent")
-st.caption(
-    "输入城市 / 天数 / 预算 / 偏好，Agent 自动检索景点信息、规划路线并给出景点间交通衔接；"
-    "遇到闭园、天气变化可自动重规划"
+
+# ---------------- 视觉主题：暖色旅行手帐风 ----------------
+
+THEME_CSS = """
+<style>
+:root{
+  --paper:#FDF8F1; --ink:#2C2621; --muted:#8A7A6C; --line:#EADCCB;
+  --terra:#DF613A; --terra-2:#F0A15E; --teal:#2E6F62; --teal-2:#E7F0EA;
+}
+html, body, [data-testid="stAppViewContainer"], .stMarkdown, p, li, span, div{
+  font-family:"PingFang SC","Microsoft YaHei","Hiragino Sans GB","Source Han Sans SC",system-ui,-apple-system,sans-serif;
+}
+.stApp{
+  background:
+    radial-gradient(1100px 470px at 6% -14%, #FCE6D4 0%, rgba(252,230,212,0) 62%),
+    radial-gradient(900px 420px at 100% -8%, #E3EFE8 0%, rgba(227,239,232,0) 58%),
+    linear-gradient(180deg,#FDF8F1 0%,#FAF2E5 60%,#F8EFE1 100%);
+  background-attachment:fixed;
+  color:var(--ink);
+}
+/* 细纸纹，不影响点击 */
+.stApp::after{
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.55;
+  background-image:radial-gradient(rgba(120,96,72,.07) 1px, transparent 1px);
+  background-size:24px 24px;
+}
+[data-testid="stAppViewContainer"] .block-container{
+  position:relative; z-index:1; padding-top:1.6rem; max-width:1320px;
+}
+/* 侧栏：米色纸卡 */
+[data-testid="stSidebar"]{
+  background:linear-gradient(180deg,#FFFDF8 0%,#FBF2E4 100%);
+  border-right:1px solid var(--line);
+}
+[data-testid="stSidebar"] .block-container{padding-top:1.2rem}
+/* 标题字感 */
+h1,h2,h3{ letter-spacing:.2px; color:#2A241F; }
+/* 按钮 */
+.stButton > button{
+  border-radius:13px; border:1px solid var(--line); background:#FFFCF8; color:#3A3129;
+  font-weight:600; transition:all .18s ease; box-shadow:0 1px 2px rgba(80,60,40,.05);
+}
+.stButton > button:hover{ border-color:var(--terra); color:var(--terra); transform:translateY(-1px) }
+.stButton > button[kind="primary"], .stButton > button[data-testid="stBaseButton-primary"]{
+  background:linear-gradient(135deg,#E36B41 0%,#F2A15D 100%); color:#fff; border:0;
+  box-shadow:0 8px 20px rgba(224,106,63,.28);
+}
+.stButton > button[kind="primary"]:hover{ color:#fff; box-shadow:0 10px 26px rgba(224,106,63,.36) }
+/* 折叠面板做成白卡 */
+[data-testid="stExpander"]{
+  background:#fff; border:1px solid var(--line); border-radius:16px;
+  box-shadow:0 3px 14px rgba(90,68,44,.05); overflow:hidden; margin-bottom:.7rem;
+}
+[data-testid="stExpander"] summary{ font-weight:700; color:#3A3129 }
+/* 图片圆角 + 投影 */
+[data-testid="stImage"] img{
+  border-radius:14px; box-shadow:0 6px 18px rgba(90,68,44,.16); object-fit:cover;
+}
+/* 输入框 / 滑块点缀 */
+[data-testid="stSidebar"] input{ border-radius:10px }
+/* 提示条 */
+[data-testid="stAlert"]{ border-radius:13px }
+hr{ border-color:var(--line) !important }
+/* 表格/代码块 */
+.stCode, pre{ border-radius:12px !important }
+/* hero */
+.zm-hero{
+  position:relative; overflow:hidden; border-radius:22px; padding:26px 30px 22px;
+  background:linear-gradient(120deg,#FFF6EC 0%,#FDE9D8 46%,#E8F1EB 100%);
+  border:1px solid #F0DFCC; box-shadow:0 12px 30px rgba(150,110,76,.10);
+  margin-bottom:18px;
+}
+.zm-hero::before{
+  content:""; position:absolute; right:-70px; top:-90px; width:260px; height:260px; border-radius:50%;
+  background:radial-gradient(circle at 30% 30%, rgba(240,161,94,.34), rgba(240,161,94,0) 70%);
+}
+.zm-hero::after{
+  content:""; position:absolute; left:-40px; bottom:-110px; width:230px; height:230px; border-radius:50%;
+  background:radial-gradient(circle at 50% 50%, rgba(46,111,98,.16), rgba(46,111,98,0) 70%);
+}
+.zm-kicker{
+  position:relative; display:inline-block; font-size:12px; letter-spacing:2px; color:#8A6A4E;
+  background:rgba(255,255,255,.72); border:1px solid #EFD9C2; border-radius:99px;
+  padding:5px 12px; margin-bottom:12px;
+}
+.zm-title{
+  position:relative; margin:0; font-size:40px; line-height:1.1; font-weight:800; color:#2A241F;
+  letter-spacing:2px;
+}
+.zm-title span{
+  background:linear-gradient(120deg,#DF613A,#E98B4C 55%,#2E6F62);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+.zm-sub{ position:relative; font-size:16px; color:#5A4B3E; margin-top:6px; font-weight:600 }
+.zm-desc{ position:relative; font-size:14px; line-height:1.75; color:#6B5A4B; margin:12px 0 14px; max-width:860px }
+.zm-chips{ position:relative; display:flex; flex-wrap:wrap; gap:8px }
+.zm-chips span{
+  font-size:12.5px; color:#4B3D31; background:rgba(255,255,255,.8);
+  border:1px solid #EFDCC8; border-radius:99px; padding:5px 11px;
+}
+/* 条目小卡 */
+.zm-item{ padding:2px 0 10px }
+.zm-guide{
+  margin-top:6px; font-size:13.5px; line-height:1.7; color:#5A4632;
+  background:linear-gradient(90deg,#FFF7E4,#FFFCF4); border-left:3px solid #F0B165;
+  border-radius:0 10px 10px 0; padding:8px 12px;
+}
+.zm-trans{
+  display:inline-block; margin-top:6px; font-size:12.5px; color:#2E6F62;
+  background:var(--teal-2); border:1px solid #D3E4DB; border-radius:8px; padding:3px 9px;
+}
+.zm-xhs{
+  display:inline-block; margin-top:6px; margin-left:6px; font-size:12.5px; color:#B4283C;
+  background:#FDEEF0; border:1px solid #F6D6DB; border-radius:8px; padding:3px 9px;
+  text-decoration:none;
+}
+.zm-xhs:hover{ background:#FCDFE3; color:#9E1F32 }
+.zm-xhs-tip{ font-size:12px; color:#A5626E; margin-top:4px }
+/* 指标卡 */
+[data-testid="stMetric"]{
+  background:#fff; border:1px solid var(--line); border-radius:15px; padding:12px 14px;
+  box-shadow:0 3px 12px rgba(90,68,44,.05);
+}
+[data-testid="stMetricValue"]{ font-weight:800; color:#2A241F }
+/* 隐藏 Streamlit 自带工具条 */
+[data-testid="stToolbar"], [data-testid="stDecoration"], #MainMenu, footer{ display:none !important }
+/* 页脚 */
+.zm-foot{ margin-top:26px; font-size:12px; color:#A08B78; text-align:center; line-height:1.8 }
+</style>
+"""
+st.markdown(THEME_CSS, unsafe_allow_html=True)
+
+st.markdown(
+    """
+<div class="zm-hero">
+  <div class="zm-kicker">全国人工智能应用创新大赛 · 智能体作品</div>
+  <h1 class="zm-title">智<span>漫游</span></h1>
+  <div class="zm-sub">城市旅行智能规划 Agent</div>
+  <p class="zm-desc">
+    说出城市、天数、预算和偏好，Agent 自己查景点、排顺路动线、算预算、写讲解词，
+    并给每一段路程标好「地铁几站 / 步行多久 / 打车多少钱」；遇到临时闭园或下雨，它能当场改方案并说明理由。
+  </p>
+  <div class="zm-chips">
+    <span>🗺️ 顺路动线规划</span>
+    <span>🚇 景点间交通衔接</span>
+    <span>🌪️ 突发扰动重规划</span>
+    <span>🧮 预算独立复核</span>
+    <span>📕 小红书玩法参考</span>
+  </div>
+</div>
+""",
+    unsafe_allow_html=True,
 )
 
 if "messages" not in st.session_state:
@@ -293,22 +499,21 @@ with st.sidebar:
 
 col1, col2 = st.columns([3, 2])
 
-TYPE_ICON = {"景点": "🏛️", "美食": "🍜", "交通": "🚌"}
+TYPE_ICON = {"景点": "🏛️", "美食": "🍜", "交通": "🚌", "打卡热点": "📸",
+             "自然风光": "🌿", "文博展馆": "🏛️", "休闲慢逛": "🚶", "购物": "🛍️"}
 
 
-def render_item(item: dict):
-    """单个行程条目：左图右文，交通方式单独一行"""
+def render_item(item: dict, city: str = ""):
+    """单个行程条目：左实拍图、右信息，交通衔接与小红书参考各占一行"""
     itype = item.get("type", "")
     icon = TYPE_ICON.get(itype, "•")
-    head = (
-        f"**{item.get('time', '')} {icon} {item.get('name', '')}**"
-        f"（{item.get('duration', '')} · 约 {item.get('cost', 0)} 元）"
-    )
+    name = item.get("name", "")
+    meta = f"{item.get('duration', '')} · 约 {item.get('cost', 0)} 元"
 
     left, right = st.columns([1, 3], gap="medium")
     with left:
         if itype != "交通":
-            img = image_path(guess_image(item))
+            img, _is_real = image_for(item)
             for kwargs in ({"width": "stretch", "output_format": "JPEG"}, {"width": "stretch"}, {"width": 120}):
                 try:
                     st.image(img, **kwargs)
@@ -316,14 +521,28 @@ def render_item(item: dict):
                 except Exception:
                     continue
     with right:
-        st.markdown(head)
+        parts = [
+            '<div class="zm-item">',
+            f'<div style="font-size:16.5px;font-weight:700;color:#2A241F">'
+            f'{item.get("time", "")} {icon} {name}'
+            f'<span style="font-size:12.5px;font-weight:500;color:#94816F">  {meta}</span></div>',
+        ]
         if item.get("desc"):
-            st.write(item["desc"])
-        trans = item.get("transport")
-        if trans:
-            st.caption(f"🚇 交通衔接：{trans}")
+            parts.append(f'<div style="font-size:14px;color:#5C4C3D;line-height:1.7;margin-top:4px">{item["desc"]}</div>')
+        if item.get("transport"):
+            parts.append(f'<div><span class="zm-trans">🚇 {item["transport"]}</span></div>')
+        if item.get("xhs"):
+            parts.append(f'<div style="font-size:12.5px;color:#A5626E;margin-top:6px">📕 社区笔记：{item["xhs"]}</div>')
+        if name and itype != "交通":
+            url = xhs_search_url(city, name)
+            parts.append(
+                f'<div style="margin-top:7px"><a class="zm-xhs" href="{url}" target="_blank">'
+                f"📕 看小红书上的真实游记</a></div>"
+            )
         if item.get("guide"):
-            st.info(f"🎙️ 讲解词：{item['guide']}")
+            parts.append(f'<div class="zm-guide">🎙️ {item["guide"]}</div>')
+        parts.append("</div>")
+        st.markdown("".join(parts), unsafe_allow_html=True)
 
 
 def render_plan(plan: dict):
@@ -332,7 +551,8 @@ def render_plan(plan: dict):
     if "error" in plan:
         st.error(plan["error"])
         return
-    st.subheader(f"📍 {plan.get('city', '')} 行程方案")
+    city = plan.get("city", "")
+    st.subheader(f"📍 {city} 行程方案")
     for day in plan.get("days", []):
         with st.expander(f"第 {day.get('day')} 天", expanded=True):
             items = day.get("items", [])
@@ -345,7 +565,7 @@ def render_plan(plan: dict):
                     continue
                 if idx > 0 and not item.get("transport"):
                     st.caption("🚇 交通衔接：同上一条交通动线，按地图导航前往")
-                render_item(item)
+                render_item(item, city)
     foods = plan.get("food") or []
     if foods:
         st.markdown("🍜 **美食推荐**：" + "、".join(foods))
@@ -517,16 +737,34 @@ with col1:
             st.code(st.session_state.last_reply, language="text")
 
 with col2:
-    total, msg = verify_budget(st.session_state.get("plan"), budget)
-    st.header("🧮 预算核算")
-    if msg:
-        st.write(msg)
-    else:
+    st.markdown("#### 🧮 预算核算")
+    plan_now = st.session_state.get("plan")
+    total, msg = verify_budget(plan_now, budget)
+    if total is None:
         st.caption("生成行程后，这里会独立复核总花费是否超预算（不依赖模型的“双保险”核算）")
+    else:
+        m1, m2 = st.columns(2)
+        m1.metric("核算总花费", f"{total} 元")
+        m2.metric("剩余额度", f"{budget - total} 元")
+        if total <= budget:
+            st.success(msg)
+        else:
+            st.error(msg)
     st.divider()
-    st.header("🧾 Agent 调用记录")
+    st.markdown("#### 🧾 Agent 调用记录")
     st.caption("答辩时展示：扰动前后两次调用对比")
     for m in st.session_state.messages[1:]:
         who = "🧑 用户" if m["role"] == "user" else "🤖 Agent"
         with st.expander(who + "：" + (m["content"][:40] + "…" if len(m["content"]) > 40 else m["content"])):
             st.text(m["content"][:2000])
+
+st.markdown(
+    """
+<div class="zm-foot">
+  景点照片来自 Wikimedia Commons 开放许可（CC BY / CC BY-SA / 公有领域），
+  无专属实拍的景点使用同类实景照片；「看小红书上的真实游记」为站内搜索直达，便于核对社区玩法与避坑信息。<br>
+  智漫游 · 城市旅行智能规划 Agent · 全国人工智能应用创新大赛参赛作品
+</div>
+""",
+    unsafe_allow_html=True,
+)
