@@ -400,8 +400,6 @@ refresh_api_config()
 
 # ---------------- 视觉主题：暖色旅行手帐风 ----------------
 
-WM_TEXT = "智漫游 ZHI MAN YOU 城市旅行智能规划 " * 34
-
 THEME_CSS = """
 <style>
 :root{
@@ -413,26 +411,20 @@ html, body, [data-testid="stAppViewContainer"], .stMarkdown, p, li, span, div{
 }
 .stApp{
   background:
-    radial-gradient(1200px 540px at 4% -12%, #FFD5B2 0%, rgba(255,213,178,0) 64%),
-    radial-gradient(1020px 500px at 98% -4%, #C2E4D5 0%, rgba(194,228,213,0) 62%),
-    radial-gradient(900px 540px at 86% 98%, #F6BE9E 0%, rgba(246,190,158,0) 66%),
-    radial-gradient(840px 480px at 6% 94%, #D0E6DA 0%, rgba(208,230,218,0) 64%),
-    radial-gradient(760px 420px at 48% 46%, #FFEACB 0%, rgba(255,234,203,0) 72%),
-    linear-gradient(158deg,#FFF8F0 0%,#F9E5CD 36%,#F4DCC4 66%,#EBE8D5 100%);
+    repeating-radial-gradient(circle at 92% -6%, rgba(198,126,78,.10) 0 1px, rgba(198,126,78,0) 1px 34px),
+    repeating-radial-gradient(circle at -2% 104%, rgba(38,104,90,.085) 0 1px, rgba(38,104,90,0) 1px 38px),
+    radial-gradient(1100px 600px at 90% -14%, #FFB87F 0%, rgba(255,184,127,0) 58%),
+    radial-gradient(900px 520px at 0% 0%, #FFDDA8 0%, rgba(255,221,168,0) 60%),
+    radial-gradient(900px 580px at 106% 66%, #F79C72 0%, rgba(247,156,114,0) 58%),
+    radial-gradient(860px 540px at -6% 90%, #A9D6C2 0%, rgba(169,214,194,0) 58%),
+    radial-gradient(620px 400px at 52% 40%, #FFF1D6 0%, rgba(255,241,214,0) 72%),
+    linear-gradient(164deg,#FFF9F0 0%,#F7E1C4 32%,#EFD3B8 62%,#DBE5D4 100%);
   background-attachment:fixed;
   color:var(--ink);
 }
-/* 斜向水印：智漫游 · 城市旅行智能规划（真实元素，z-index:-1 垫在内容下方） */
-.zm-wm{
-  position:fixed; top:-18vh; left:-18vw; width:136vw; height:136vh;
-  z-index:-1; pointer-events:none; overflow:hidden;
-  font-size:26px; font-weight:800; letter-spacing:6px; line-height:2.45;
-  color:rgba(178,96,58,.115); word-break:break-all; transform:rotate(-13deg);
-  user-select:none;
-}
 /* 细纸纹，不影响点击 */
 .stApp::after{
-  content:""; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.5;
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.32;
   background-image:radial-gradient(rgba(120,96,72,.07) 1px, transparent 1px);
   background-size:24px 24px;
 }
@@ -478,8 +470,12 @@ hr{ border-color:var(--line) !important }
 /* hero */
 .zm-hero{
   position:relative; overflow:hidden; border-radius:22px; padding:26px 30px 22px;
-  background:linear-gradient(120deg,#FFF6EC 0%,#FDE9D8 46%,#E8F1EB 100%);
-  border:1px solid #F0DFCC; box-shadow:0 12px 30px rgba(150,110,76,.10);
+  background:
+    radial-gradient(420px 220px at 100% 0%, rgba(255,214,164,.55), rgba(255,214,164,0) 70%),
+    radial-gradient(380px 200px at 0% 100%, rgba(190,224,208,.42), rgba(190,224,208,0) 72%),
+    linear-gradient(120deg, rgba(255,252,246,.96) 0%, rgba(255,241,225,.94) 50%, rgba(235,243,238,.94) 100%);
+  border:1px solid rgba(201,169,97,.65);
+  box-shadow:0 14px 34px rgba(150,110,76,.12), inset 0 1px 0 rgba(255,255,255,.9);
   margin-bottom:18px;
 }
 .zm-hero::before{
@@ -548,7 +544,6 @@ st.markdown(THEME_CSS, unsafe_allow_html=True)
 
 st.markdown(
     f"""
-<div class="zm-wm">{WM_TEXT}</div>
 <div class="zm-hero">
   <div class="zm-kicker">全国人工智能应用创新大赛 · 智能体作品</div>
   <h1 class="zm-title">智<span>漫游</span></h1>
