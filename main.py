@@ -83,7 +83,13 @@ def load_env_file():
 
 
 def load_streamlit_secrets():
-    """云端部署时从 st.secrets 读取模型配置"""
+    """云端部署时从 st.secrets 读取模型配置（本地无 secrets.toml 时直接跳过，避免界面报错条）"""
+    candidates = [
+        os.path.join(HERE, ".streamlit", "secrets.toml"),
+        os.path.expanduser("~/.streamlit/secrets.toml"),
+    ]
+    if not any(os.path.exists(p) for p in candidates):
+        return
     try:
         for k in ("LLM_API_BASE", "LLM_API_KEY", "LLM_MODEL"):
             if k in st.secrets:
@@ -95,17 +101,27 @@ def load_streamlit_secrets():
 CONFIG = load_config()
 SYSTEM_PROMPT = CONFIG["system_prompt"]
 
-load_streamlit_secrets()
-load_env_file()
+# 注意：加载 .env / st.secrets 属于会触发 Streamlit 消息的动作，
+# 必须放在 st.set_page_config() 之后执行，否则会报 “set_page_config can only be called once”。
+API_BASE = ""
+API_KEY = ""
+MODEL = "glm-4-flash"
 
-API_BASE = os.environ.get("LLM_API_BASE", "")
-API_KEY = os.environ.get("LLM_API_KEY", "")
-MODEL = os.environ.get("LLM_MODEL", "glm-4-flash")
+
+def refresh_api_config():
+    """在界面初始化之后调用，把 .env / Secrets 读进全局变量"""
+    global API_BASE, API_KEY, MODEL
+    load_streamlit_secrets()
+    load_env_file()
+    API_BASE = os.environ.get("LLM_API_BASE", "")
+    API_KEY = os.environ.get("LLM_API_KEY", "")
+    MODEL = os.environ.get("LLM_MODEL", "glm-4-flash")
 
 
 # ---------------- Agent 调用层 ----------------
 
 def call_agent(messages: list) -> str:
+    """非流式兜底调用（流式失败时使用）"""
     if not API_KEY:
         return json.dumps({"error": "未配置 LLM_API_KEY，请编辑项目目录下的 .env 文件"}, ensure_ascii=False)
     url = API_BASE.rstrip("/") + "/chat/completions"
@@ -113,7 +129,7 @@ def call_agent(messages: list) -> str:
         resp = requests.post(
             url,
             headers={"Authorization": f"Bearer {API_KEY}"},
-            json={"model": MODEL, "messages": messages, "temperature": 0.4},
+            json={"model": MODEL, "messages": messages, "temperature": 0.4, "max_tokens": 4096},
             timeout=120,
         )
         resp.raise_for_status()
@@ -122,14 +138,56 @@ def call_agent(messages: list) -> str:
         return json.dumps({"error": f"调用失败：{e}"}, ensure_ascii=False)
 
 
+def call_agent_stream(messages: list, on_update=None) -> str:
+    """流式调用：边生成边回调，首字延迟内就能看到内容在动（体感快很多）"""
+    if not API_KEY:
+        return json.dumps({"error": "未配置 LLM_API_KEY，请编辑项目目录下的 .env 文件"}, ensure_ascii=False)
+    url = API_BASE.rstrip("/") + "/chat/completions"
+    buf = []
+    try:
+        resp = requests.post(
+            url,
+            headers={"Authorization": f"Bearer {API_KEY}"},
+            json={
+                "model": MODEL,
+                "messages": messages,
+                "temperature": 0.4,
+                "max_tokens": 4096,
+                "stream": True,
+            },
+            timeout=(10, 180),
+            stream=True,
+        )
+        resp.raise_for_status()
+        for raw in resp.iter_lines(decode_unicode=True):
+            if not raw or not raw.startswith("data:"):
+                continue
+            data = raw[5:].strip()
+            if data == "[DONE]":
+                break
+            try:
+                delta = json.loads(data)["choices"][0].get("delta", {})
+            except Exception:
+                continue
+            piece = delta.get("content") or ""
+            if piece:
+                buf.append(piece)
+                if on_update:
+                    on_update("".join(buf))
+        return "".join(buf) if buf else call_agent(messages)
+    except Exception:
+        # 流式不被支持时自动降级为一次性返回，保证可用性
+        return call_agent(messages)
+
+
 def build_user_input(city, days, budget, prefs):
     return (
         f"请为我规划行程。目标城市：{city}；出行天数：{days} 天；"
         f"总预算：{budget} 元；偏好标签：{'、'.join(prefs) if prefs else '不限'}。"
         f"要求：①每个景点之间必须给出交通方式、乘车站数/线路、耗时与费用，写入 transport 字段；"
         f"②为每个景点选择一个配图类别，写入 img 字段，取值只能是 "
-        f"heritage / landmark / museum / nature / food / night / street 之一。"
-        f"请严格按系统规定的 JSON 格式输出。"
+        f"heritage / landmark / museum / nature / food / night / street 之一；"
+        f"③每天 3—4 个条目即可，讲解词控制在 40 字以内，只输出 JSON，不要任何解释性文字。"
     )
 
 
@@ -154,7 +212,7 @@ def parse_plan(text: str):
 def verify_budget(plan: dict, budget: float):
     """独立于大模型核算总花费，超出预算给出警示——答辩可展示'双保险'"""
     if not plan or "days" not in plan:
-        return None, "行程数据异常"
+        return None, ""
     total = sum(
         item.get("cost", 0) or 0
         for day in plan["days"]
@@ -188,6 +246,7 @@ def image_path(key: str) -> str:
 # ---------------- Streamlit 界面 ----------------
 
 st.set_page_config(page_title="智漫游 · 城市旅行智能规划 Agent", page_icon="🧭", layout="wide")
+refresh_api_config()
 st.title("🧭 智漫游 —— 城市旅行智能规划 Agent")
 st.caption(
     "输入城市 / 天数 / 预算 / 偏好，Agent 自动检索景点信息、规划路线并给出景点间交通衔接；"
@@ -232,10 +291,15 @@ def render_item(item: dict):
         f"（{item.get('duration', '')} · 约 {item.get('cost', 0)} 元）"
     )
 
-    left, right = st.columns([1, 3.2], gap="medium")
+    left, right = st.columns([1, 3], gap="medium")
     with left:
         if itype != "交通":
-            st.image(image_path(guess_image(item)), width=200)
+            img = image_path(guess_image(item))
+            try:
+                # 图片宽度自适应列宽，避免窄屏时压到右侧文字
+                st.image(img, width="stretch")
+            except Exception:
+                st.image(img, width=120)
     with right:
         st.markdown(head)
         if item.get("desc"):
@@ -277,13 +341,53 @@ def render_plan(plan: dict):
         st.write(f"📝 {plan['notes']}")
 
 
+def run_agent(messages: list, tip: str) -> str:
+    """统一生成入口：命中缓存秒回；否则流式生成并实时展示进度"""
+    key = json.dumps(messages, ensure_ascii=False)
+    cache = st.session_state.setdefault("cache", {})
+    if key in cache:
+        st.caption("⚡ 命中缓存，同一组参数直接秒出（演示时重复提问不用再等）")
+        return cache[key]
+
+    live = st.empty()
+    meter = st.empty()
+
+    def on_update(text: str):
+        live.code(text[-1500:], language="json")
+        meter.caption(f"Agent 正在输出…已生成 {len(text)} 字（流式回显，无需等待全部完成）")
+
+    with st.spinner(tip):
+        reply = call_agent_stream(messages, on_update)
+    live.empty()
+    meter.empty()
+
+    if '"error"' not in reply[:40]:
+        cache[key] = reply
+    return reply
+
+
+def generate_with_repair(messages: list, tip: str) -> str:
+    """生成 + 自愈：若 JSON 不完整（被截断/格式错），自动让模型重出一遍"""
+    reply = run_agent(messages, tip)
+    if parse_plan(reply) is not None or '"error"' in reply[:40]:
+        return reply
+    nudge = messages + [
+        {"role": "assistant", "content": reply},
+        {"role": "user", "content": "上面的 JSON 不完整或格式有误，请重新输出一份完整、合法、能被 json.loads 解析的 JSON，不要任何解释文字。"},
+    ]
+    retry = run_agent(nudge, "输出格式异常，正在自动修正一次…")
+    return retry if parse_plan(retry) is not None else reply
+
+
 with col1:
     if go:
         st.session_state.messages.append(
             {"role": "user", "content": build_user_input(city, days, budget, prefs)}
         )
-        with st.spinner("Agent 正在检索景点信息、规划路线并衔接交通…"):
-            reply = call_agent(st.session_state.messages)
+        reply = generate_with_repair(
+            st.session_state.messages,
+            "Agent 正在检索景点信息、规划路线并衔接交通…（已开启流式输出，首字即出）",
+        )
         st.session_state.messages.append({"role": "assistant", "content": reply})
         st.session_state.plan = parse_plan(reply)
         st.session_state.last_reply = reply
@@ -298,8 +402,7 @@ with col1:
                 ),
             }
         )
-        with st.spinner("Agent 正在重新规划…"):
-            reply = call_agent(st.session_state.messages)
+        reply = generate_with_repair(st.session_state.messages, "Agent 正在重新规划…")
         st.session_state.messages.append({"role": "assistant", "content": reply})
         st.session_state.plan = parse_plan(reply)
         st.session_state.last_reply = reply
@@ -316,6 +419,8 @@ with col2:
     st.header("🧮 预算核算")
     if msg:
         st.write(msg)
+    else:
+        st.caption("生成行程后，这里会独立复核总花费是否超预算（不依赖模型的“双保险”核算）")
     st.divider()
     st.header("🧾 Agent 调用记录")
     st.caption("答辩时展示：扰动前后两次调用对比")
