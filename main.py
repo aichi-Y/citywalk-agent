@@ -44,27 +44,99 @@ PREF_OPTIONS = [
     "休闲慢逛（citywalk）",
 ]
 
-# 景点配图：7 类素材（本地静态图，离线可用、加载稳定）
-IMAGE_TYPES = {
-    "heritage": "古迹建筑",
-    "landmark": "现代地标",
-    "museum": "文博展馆",
-    "nature": "自然风光",
-    "food": "地方美食",
-    "night": "夜景灯影",
-    "street": "街区漫步",
+# 景点配图的两级策略：
+#   1) 优先用该景点的本地实拍照（static/images/spots，三城 35 张真实照片）
+#   2) 找不到就显示「题材卡片」——不再拿别的景点照片硬凑
+#      （旧版把天津之眼当"现代地标"、把古莲花池当"自然风光"、把包子当"美食"，
+#        结果故宫、颐和园、烤鸭全被套上不相干的照片，这就是"配图不匹配"的根源）
+TOPIC_META = {
+    "palace":   ("🏯", "宫殿园林", "#E8D3B2", "#C39A63"),
+    "temple":   ("⛩\ufe0f", "寺庙古刹", "#E0D0BA", "#B08F6A"),
+    "heritage": ("🏛\ufe0f", "古迹建筑", "#E6D1B2", "#C09A6A"),
+    "wall":     ("🧱", "城墙城门", "#DEC9AE", "#AC8760"),
+    "museum":   ("🖼\ufe0f", "文博展馆", "#D8E0E4", "#8FA5B0"),
+    "park":     ("🌳", "公园绿地", "#D3E5CF", "#87B487"),
+    "lake":     ("🌊", "湖光水色", "#CFE1E7", "#82AABD"),
+    "mountain": ("⛰\ufe0f", "山野风光", "#D8E1D1", "#8FA57C"),
+    "street":   ("🏮", "历史街区", "#E7D1BD", "#BB9068"),
+    "mall":     ("🛍\ufe0f", "商圈步行街", "#E4D6E7", "#AC8FBA"),
+    "night":    ("🌃", "夜景灯影", "#C6CFE1", "#6F80A4"),
+    "tower":    ("🗼", "城市地标", "#E2DCCD", "#AB9F82"),
+    "church":   ("⛪", "教堂建筑", "#DCD8CF", "#A69E90"),
+    "bridge":   ("🌉", "桥梁水岸", "#D2DFE4", "#88A5AE"),
+    "theater":  ("🎭", "剧场演出", "#E3D2DA", "#AC8798"),
+    "resort":   ("♨\ufe0f", "温泉度假", "#DBE0E6", "#98A4B2"),
+    "food_hotpot":  ("🍲", "火锅烧烤", "#F1D0BF", "#C87F5E"),
+    "food_roast":   ("🍖", "特色硬菜", "#F0CEB4", "#C17C4E"),
+    "food_noodle":  ("🍜", "面食汤粉", "#F2D9BC", "#C68A50"),
+    "food_snack":   ("🥟", "地方小吃", "#F3DBBF", "#CC9455"),
+    "food_dessert": ("🍡", "甜品糕点", "#F4D3D8", "#CB8693"),
+    "food_drink":   ("☕", "咖啡茶饮", "#EADCC9", "#AF8F69"),
+    "food":         ("🍽\ufe0f", "特色美食", "#F0D8C2", "#C38F64"),
 }
 
-# 关键词 → 图片类别（模型未给出 img 字段时兜底推断）
-IMAGE_KEYWORDS = [
-    ("food", ["小吃", "餐厅", "美食", "饭", "面", "包子", "煎饼", "烧烤", "火锅", "咖啡", "茶", "甜品", "夜市"]),
-    ("museum", ["博物馆", "美术馆", "展馆", "纪念馆", "图书馆", "展览"]),
-    ("night", ["夜景", "夜游", "灯光", "夜市", "酒吧"]),
-    ("nature", ["公园", "湖", "湿地", "山", "植物园", "河畔", "绿道", "森林"]),
-    ("street", ["街", "巷", "胡同", "广场", "五大道", "商圈", "步行街"]),
-    ("landmark", ["塔", "大楼", "中心", "大桥", "摩天轮", "电视塔", "地标", "天眼"]),
-    ("heritage", ["寺", "庙", "宫", "城墙", "故居", "遗址", "会馆", "文庙", "古镇", "陵"]),
+# 关键词 → 题材。美食与景点分开查，避免「天坛公园」被「汤」这类字误伤；
+# 组内顺序敏感：先具体后笼统。
+FOOD_KEYWORDS = [
+    ("food_hotpot", ["火锅", "涮肉", "烧烤", "烤串", "麻辣烫", "串串", "烤肉"]),
+    ("food_roast", ["烤鸭", "烧鹅", "烤羊", "烧鸡", "卤煮", "炖菜", "硬菜", "扒肉"]),
+    ("food_noodle", ["面", "粉", "米线", "馄饨", "粥", "汤"]),
+    ("food_dessert", ["糕", "甜", "冰淇淋", "冰室", "点心", "双皮奶", "糖"]),
+    ("food_drink", ["咖啡", "奶茶", "茶饮", "酒吧", "精酿"]),
+    ("food_snack", ["小吃", "包", "饺", "煎饼", "火烧", "炸", "饼", "锅巴菜", "卤"]),
 ]
+
+SPOT_KEYWORDS = [
+    ("night", ["夜景", "夜游", "灯光秀", "夜市"]),
+    ("church", ["教堂", "礼拜堂", "修道院"]),
+    ("bridge", ["桥"]),
+    ("theater", ["剧院", "剧场", "戏楼", "戏台", "相声", "演出"]),
+    ("resort", ["温泉", "滑雪", "度假"]),
+    ("mall", ["商圈", "购物中心", "商场", "步行街", "百货"]),
+    ("palace", ["故宫", "宫殿", "皇家", "颐和园", "御花园", "行宫", "园林", "莲池", "山庄"]),
+    ("wall", ["长城", "城墙", "城门", "关城", "古堡"]),
+    ("temple", ["寺", "庙", "坛", "道观", "祠", "塔", "石窟", "庵"]),
+    ("heritage", ["故居", "会馆", "遗址", "陵", "署", "府", "书院", "文庙", "古建", "宫"]),
+    ("museum", ["博物馆", "博物院", "美术馆", "展馆", "纪念馆", "图书馆", "科技馆", "展览"]),
+    ("lake", ["湖", "池", "湿地", "泉", "河畔", "江边", "海滨", "水乡"]),
+    ("park", ["公园", "绿地", "植物园", "广场", "草原"]),
+    ("mountain", ["山", "峰", "岭", "峡谷", "森林"]),
+    ("street", ["街", "巷", "胡同", "里弄", "古镇", "古城", "老街", "坊", "洋楼"]),
+    ("tower", ["摩天轮", "电视塔", "之眼", "大楼", "中心", "天际线", "地标"]),
+]
+
+MODEL_IMG_TO_TOPIC = {
+    "heritage": "heritage", "landmark": "tower", "museum": "museum",
+    "nature": "park", "food": "food", "night": "night", "street": "street",
+}
+
+
+def guess_topic(item: dict) -> str:
+    """按条目类型分流判题材：先看名字，名字判不出再看描述，最后看模型 img 字段"""
+    table = FOOD_KEYWORDS if item.get("type") == "美食" else SPOT_KEYWORDS
+    for src in (item.get("name", ""), item.get("desc", "")):
+        if not src:
+            continue
+        for key, words in table:
+            if any(w in src for w in words):
+                return key
+    old = str(item.get("img", "")).strip().lower()
+    if old in MODEL_IMG_TO_TOPIC:
+        return MODEL_IMG_TO_TOPIC[old]
+    return "food" if item.get("type") == "美食" else "heritage"
+
+
+def topic_card(item: dict) -> str:
+    """题材卡片：渐变底 + 图标 + 题材名。没有真图时用它，绝不贴别的景点照片。"""
+    key = guess_topic(item)
+    icon, label, c1, c2 = TOPIC_META.get(key, TOPIC_META["heritage"])
+    return (
+        f'<div class="zm-ph" style="background:linear-gradient(140deg,{c1} 0%,{c2} 100%)">'
+        f'<div class="zm-ph-in">'
+        f'<div class="zm-ph-ico">{icon}</div>'
+        f'<div class="zm-ph-tag">{label}</div>'
+        f"</div></div>"
+    )
 
 
 def load_config():
@@ -335,36 +407,43 @@ def verify_budget(plan: dict, budget: float):
 
 # ---------------- 景点配图 ----------------
 
-def guess_image(item: dict) -> str:
-    """优先用模型给的 img 字段，缺失则按名称/描述关键词推断，最后兜底 heritage"""
-    img = str(item.get("img", "")).strip().lower()
-    if img in IMAGE_TYPES:
-        return img
-    name = str(item.get("name", "")) + " " + str(item.get("desc", ""))
-    for key, words in IMAGE_KEYWORDS:
-        if any(w in name for w in words):
-            return key
-    return "heritage" if item.get("type") == "景点" else "food"
-
-
-def image_path(key: str) -> str:
-    """类别兜底图：优先缩略图（渲染快），缺失时回退原图"""
-    thumb = os.path.join(IMAGE_DIR, "thumbs", f"{key}.jpg")
-    if os.path.exists(thumb):
-        return thumb
-    path = os.path.join(IMAGE_DIR, f"{key}.jpg")
-    return path if os.path.exists(path) else os.path.join(IMAGE_DIR, "heritage.jpg")
-
-
 # ---------------- 景点实拍照片（Wikimedia Commons 开放许可） ----------------
 
 SPOT_DIR = os.path.join(IMAGE_DIR, "spots")
 PHOTO_INDEX = os.path.join(IMAGE_DIR, "photos_credit.json")
 
+# 每张实拍图属于哪座城市：具体景点的照片只在本地行程里用，
+# 避免保定的「鼓楼」配上天津鼓楼的照片（跨城借用＝一眼假）。
+SPOT_CITY = {}
+for _c, _keys in {
+    "天津": "tianjin_eye guculture_street porcelain_house xikai_church wanghailou "
+            "italian_town liang_qichao guangdong_hall tianjin_museum tianjin_confucius "
+            "tianjin_drumtower nanshi_food quanyechang haihe_night goubuli guobacai "
+            "xiangsheng jianbing erduoyan wudadao jingyuan",
+    "石家庄": "hebei_museum zhengding_wall longxing_temple zhaozhou_bridge xibaipo "
+              "banmian yanghe_tower",
+    "保定": "zhili_office lotus_pond daci_pavilion baoding_academy baoding_museum "
+            "lvrou_huoshao",
+}.items():
+    for _k in _keys.split():
+        SPOT_CITY[_k] = _c
+
+# 图库里的名字和行程里可能的写法对不上时，用别名补齐
+SPOT_ALIAS = {
+    "zhengding_wall": ["正定城墙", "正定古城"],
+    "hebei_museum": ["河北省博物馆", "河北博物馆"],
+    "tianjin_eye": ["天津之眼摩天轮"],
+    "lotus_pond": ["古莲花池公园"],
+    "baoding_academy": ["保定军校广场", "保定军校"],
+    "haihe_night": ["海河公园", "海河"],
+    "guangdong_hall": ["天津广东会馆"],
+    "xiangsheng": ["相声茶馆", "名流茶馆"],
+}
+
 
 @st.cache_data(show_spinner=False)
 def load_spot_index():
-    """景点名 -> 本地实拍图路径（只收录确实下载成功的）"""
+    """景点名 -> (实拍图路径, 图库键)（只收录确实下载成功的）"""
     idx = {}
     try:
         with open(PHOTO_INDEX, "r", encoding="utf-8") as f:
@@ -373,9 +452,11 @@ def load_spot_index():
         return idx
     for key, meta in data.items():
         p = os.path.join(SPOT_DIR, f"{key}.jpg")
-        name = (meta or {}).get("name") or ""
-        if name and os.path.exists(p):
-            idx[name] = p
+        if not os.path.exists(p):
+            continue
+        for name in [(meta or {}).get("name") or ""] + SPOT_ALIAS.get(key, []):
+            if name:
+                idx[name] = (p, key)
     return idx
 
 
@@ -384,26 +465,45 @@ def clean_spot_name(s: str) -> str:
     return re.sub(r"[\s·、,，。:：/]+", "", s)
 
 
-def photo_for(item: dict):
-    """按景点名最长匹配本地实拍照片；匹配不到返回 None"""
+def photo_for(item: dict, city: str = "", used: set = None):
+    """按景点名匹配本地实拍照片，匹配不到返回 None。
+
+    规则比旧版收紧（旧版只要子串命中就上图，「故宫」就套上了寺庙牌坊）：
+    · 名称完全相等，或图库名是行程名的子串/后缀（「白运章包子」→「包子」）；
+    · 具体景点的照片只在同一座城市使用，跨城不借；
+    · 同一张图在一次行程里只用一次，第二处宁可用题材卡。
+    """
     name = clean_spot_name(item.get("name", ""))
     if not name:
         return None
+    used = used if used is not None else set()
     idx = load_spot_index()
-    best = None
-    for spot, path in idx.items():
+    cands = []
+    for spot, (path, key) in idx.items():
         cs = clean_spot_name(spot)
-        if cs and cs in name and (best is None or len(cs) > best[0]):
-            best = (len(cs), path)
-    return best[1] if best else None
+        if not cs:
+            continue
+        if cs != name and not (len(cs) >= 2 and (cs in name or name.endswith(cs))):
+            continue
+        sc = SPOT_CITY.get(key, "")
+        if sc and city and sc != city:
+            continue
+        cands.append((cs == name, len(cs) / max(len(name), 1), path))
+    if not cands:
+        return None
+    cands.sort(key=lambda x: (x[0], x[1]), reverse=True)
+    for _, _, path in cands:
+        if path not in used:
+            return path
+    return None
 
 
-def image_for(item: dict):
-    """返回 (图片路径, 是否为该景点实拍)"""
-    real = photo_for(item)
+def image_for(item: dict, city: str = "", used: set = None):
+    """返回 (实拍图路径或 None, 是否为该景点实拍)"""
+    real = photo_for(item, city, used)
     if real:
         return real, True
-    return image_path(guess_image(item)), False
+    return None, False
 
 
 def xhs_search_url(city: str, name: str) -> str:
@@ -547,6 +647,34 @@ hr{ border-color:var(--line) !important }
 }
 .zm-xhs:hover{ background:#FCDFE3; color:#9E1F32 }
 .zm-xhs-tip{ font-size:12px; color:#A5626E; margin-top:4px }
+/* 题材卡片：没有该景点实拍照时的占位，不借用别的景点照片 */
+.zm-ph{
+  position:relative; width:100%; padding-top:75%; border-radius:14px;
+  overflow:hidden; box-shadow:0 8px 18px rgba(120,90,60,.16);
+}
+.zm-ph::before{
+  content:""; position:absolute; inset:0; z-index:1;
+  background:
+    radial-gradient(circle at 50% 28%, rgba(255,255,255,.5), transparent 62%),
+    repeating-linear-gradient(135deg, rgba(255,255,255,.10) 0 2px, transparent 2px 10px);
+  pointer-events:none;
+}
+.zm-ph-in{
+  position:absolute; inset:0; z-index:2;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:7px;
+}
+.zm-ph-ico{
+  font-size:38px; line-height:1;
+  filter:drop-shadow(0 2px 3px rgba(110,80,50,.28));
+}
+.zm-ph-tag{
+  font-size:12px; font-weight:700; color:rgba(58,42,26,.82);
+  letter-spacing:.5px; background:rgba(255,255,255,.66);
+  border:1px solid rgba(255,255,255,.8); padding:2px 10px; border-radius:99px;
+}
+.zm-ph-note{
+  font-size:11.5px; color:#9A8878; text-align:center; margin-top:5px;
+}
 /* 指标卡 */
 [data-testid="stMetric"]{
   background:#fff; border:1px solid var(--line); border-radius:15px; padding:12px 14px;
@@ -617,8 +745,12 @@ TYPE_ICON = {"景点": "🏛️", "美食": "🍜", "交通": "🚌", "打卡热
              "自然风光": "🌿", "文博展馆": "🏛️", "休闲慢逛": "🚶", "购物": "🛍️"}
 
 
-def render_item(item: dict, city: str = ""):
-    """单个行程条目：左实拍图、右信息，交通衔接与小红书参考各占一行"""
+def render_item(item: dict, city: str = "", used: set = None):
+    """单个行程条目：左配图、右信息，交通衔接与小红书参考各占一行
+
+    配图优先级：该景点实拍 → 题材卡片。没有实拍时不再借用别的景点照片，
+    同一张实拍图在一次行程里也只出现一次。
+    """
     itype = item.get("type", "")
     icon = TYPE_ICON.get(itype, "•")
     name = item.get("name", "")
@@ -627,13 +759,22 @@ def render_item(item: dict, city: str = ""):
     left, right = st.columns([1, 3], gap="medium")
     with left:
         if itype != "交通":
-            img, _is_real = image_for(item)
-            for kwargs in ({"width": "stretch", "output_format": "JPEG"}, {"width": "stretch"}, {"width": 120}):
-                try:
-                    st.image(img, **kwargs)
-                    break
-                except Exception:
-                    continue
+            used = used if used is not None else set()
+            img, is_real = image_for(item, city, used)
+            if is_real and img:
+                used.add(img)
+                for kwargs in ({"width": "stretch", "output_format": "JPEG"},
+                               {"width": "stretch"}, {"width": 120}):
+                    try:
+                        st.image(img, **kwargs)
+                        break
+                    except Exception:
+                        continue
+                st.markdown(
+                    f'<div class="zm-ph-note">实拍 · {name}</div>', unsafe_allow_html=True
+                )
+            else:
+                st.markdown(topic_card(item), unsafe_allow_html=True)
     with right:
         parts = [
             '<div class="zm-item">',
@@ -667,6 +808,7 @@ def render_plan(plan: dict):
         return
     city = plan.get("city", "")
     st.subheader(f"📍 {city} 行程方案（共 {len(plan.get('days') or [])} 天）")
+    used_imgs = set()
     for day in plan.get("days", []):
         with st.expander(f"第 {day.get('day')} 天", expanded=True):
             items = day.get("items", [])
@@ -679,7 +821,7 @@ def render_plan(plan: dict):
                     continue
                 if idx > 0 and not item.get("transport"):
                     st.caption("🚇 交通衔接：同上一条交通动线，按地图导航前往")
-                render_item(item, city)
+                render_item(item, city, used_imgs)
     foods = plan.get("food") or []
     if foods:
         st.markdown("🍜 **美食推荐**：" + "、".join(foods))
@@ -1241,7 +1383,7 @@ st.markdown(
     """
 <div class="zm-foot">
   景点照片来自 Wikimedia Commons 开放许可（CC BY / CC BY-SA / 公有领域），
-  无专属实拍的景点使用同类实景照片；「看小红书上的真实游记」为站内搜索直达，便于核对社区玩法与避坑信息。<br>
+  暂无实拍照片的景点以题材卡片标注类别，不混用其他景点照片；「看小红书上的真实游记」为站内搜索直达，便于核对社区玩法与避坑信息。<br>
   智漫游 · 城市旅行智能规划 Agent · 全国人工智能应用创新大赛参赛作品
 </div>
 """,
