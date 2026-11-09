@@ -1,0 +1,110 @@
+{
+  "city": "天津",
+  "days": [
+    {
+      "day": 1,
+      "items": [
+        {
+          "time": "09:00",
+          "type": "景点",
+          "name": "天津之眼",
+          "desc": "天津标志性建筑",
+          "cost": 150,
+          "duration": "1.5h",
+          "transport": "地铁3号线至天津之眼站 · 3站 · 12分钟 · 3元",
+          "img": "landmark",
+          "guide": "天津之眼见证津城变迁"
+        },
+        {
+          "time": "11:30",
+          "type": "美食",
+          "name": "狗不理包子",
+          "desc": "天津特色美食",
+          "cost": 30,
+          "duration": "1h",
+          "transport": "步行 500米 · 8分钟 · 0元",
+          "img": "food",
+          "guide": "皮薄馅大，鲜香可口"
+        },
+        {
+          "time": "13:30",
+          "type": "景点",
+          "name": "古文化街",
+          "desc": "天津老街风貌",
+          "cost": 0,
+          "duration": "1.5h",
+          "transport": "步行 1.2公里 · 20分钟 · 0元",
+          "img": "street",
+          "guide": "感受老天津文化"
+        },
+        {
+          "time": "15:30",
+          "type": "打卡热点",
+          "name": "五大道",
+          "desc": "洋楼林立",
+          "cost": 0,
+          "duration": "1h",
+          "transport": "步行 1.5公里 · 25分钟 · 0元",
+          "img": "landmark",
+          "guide": "漫步在历史长廊"
+        }
+      ]
+    },
+    {
+      "day": 2,
+      "items": [
+        {
+          "time": "09:00",
+          "type": "景点",
+          "name": "天津博物馆",
+          "desc": "天津历史博物馆",
+          "cost": 40,
+          "duration": "2h",
+          "transport": "地铁2号线至天津博物馆站 · 1站 · 8分钟 · 2元",
+          "img": "museum",
+          "guide": "探索天津历史文化"
+        },
+        {
+          "time": "11:30",
+          "type": "美食",
+          "name": "耳朵眼炸糕",
+          "desc": "传统小吃",
+          "cost": 15,
+          "duration": "1h",
+          "transport": "步行 800米 · 15分钟 · 0元",
+          "img": "food",
+          "guide": "外酥里嫩，香甜可口"
+        },
+        {
+          "time": "13:30",
+          "type": "景点",
+          "name": "意式风情区",
+          "desc": "欧洲建筑风格",
+          "cost": 0,
+          "duration": "1.5h",
+          "transport": "步行 1.2公里 · 20分钟 · 0元",
+          "img": "landmark",
+          "guide": "感受异国风情"
+        },
+        {
+          "time": "15:30",
+          "type": "打卡热点",
+          "name": "海河夜景",
+          "desc": "天津夜景",
+          "cost": 0,
+          "duration": "1h",
+          "transport": "步行 1.5公里 · 25分钟 · 0元",
+          "img": "night",
+          "guide": "欣赏海河璀璨夜景"
+        }
+      ]
+    }
+  ],
+  "food": [
+    "狗不理包子",
+    "耳朵眼炸糕"
+  ],
+  "total_cost": 210,
+  "within_budget": true,
+  "notes": ""
+}
