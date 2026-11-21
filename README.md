@@ -44,7 +44,7 @@ python console_demo.py
 
 ## 🖼️ 景点照片与社区玩法参考
 
-- 每个景点左侧为**真实实拍照片**（非插画）：共 35 个京津冀景点，源自 Wikimedia Commons 开放许可素材（CC BY / CC BY-SA / 公有领域），
+- 每个景点左侧为**真实实拍照片**（非插画）：共 40+ 个京津冀景点（含秦皇岛的山海关、老龙头、角山长城、北戴河、阿那亚、秦皇岛博物馆、祖山等），源自 Wikimedia Commons 开放许可素材（CC BY / CC BY-SA / 公有领域），
   统一裁切 4:3、压缩到 800×600，随仓库提交，离线可用；来源清单见 `static/images/photos_credit.json`。
 - 没有专属实拍的景点，使用**同类实景照片**兜底（不虚构为某景点）。
 - 每条行程可一键跳转「小红书」站内搜索（`xiaohongshu.com/search_result?keyword=城市+景点`），

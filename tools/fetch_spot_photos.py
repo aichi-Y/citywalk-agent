@@ -21,6 +21,18 @@ UA = "ZhiManyou-EduDemo/1.0 (student competition; contact aichi-Y)"
 
 # (文件名, 展示名, 中文维基条目, 英文维基条目, Commons 兜底搜索词)
 SPOTS = [
+    # ---------- 北京 ----------
+    ("forbidden_city", "故宫", "故宫", "Forbidden City", "Forbidden City Beijing"),
+    ("tiananmen", "天安门", "天安门", "Tiananmen", "Tiananmen Gate Beijing"),
+    ("temple_of_heaven", "天坛", "天坛", "Temple of Heaven", "Temple of Heaven Beijing"),
+    ("summer_palace", "颐和园", "颐和园", "Summer Palace", "Summer Palace Beijing"),
+    ("great_wall", "八达岭长城", "八达岭长城", "Great Wall of China", "Badaling Great Wall"),
+    ("old_summer_palace", "圆明园", "圆明园", "Old Summer Palace", "Old Summer Palace Yuanmingyuan"),
+    ("national_museum", "中国国家博物馆", "中国国家博物馆", "National Museum of China", "National Museum of China"),
+    ("beihai_park", "北海公园", "北海公园", "Beihai Park", "Beihai Park Beijing"),
+    ("bird_nest", "鸟巢", "国家体育场", "Beijing National Stadium", "Beijing National Stadium"),
+    ("lama_temple", "雍和宫", "雍和宫", "Yonghe Temple", "Yonghe Temple Beijing"),
+    ("prince_gong", "恭王府", "恭王府", "Prince Gong's Mansion", "Prince Gong Mansion Beijing"),
     # ---------- 天津 ----------
     ("tianjin_eye", "天津之眼", "天津之眼", "Tianjin Eye", "Tianjin Eye"),
     ("guculture_street", "古文化街", "天津古文化街", "Ancient Culture Street", "Ancient Culture Street Tianjin"),
@@ -45,10 +57,10 @@ SPOTS = [
     ("guobacai", "锅巴菜", "锅巴菜", None, "Guobacai"),
     ("xiangsheng", "相声", "相声", "Xiangsheng", "Xiangsheng performance"),
     # ---------- 石家庄 / 正定 ----------
-    ("hebei_museum", "河北博物院", "河北博物院", "Hebei Museum", "Hebei Museum"),
-    ("zhengding_wall", "正定古城墙", "正定城墙", "Zhengding", "Zhengding city wall"),
+    ("hebei_museum", "河北博物院", "河北博物院", "Hebei Museum", "Hebei Museum Shijiazhuang building"),
+    ("zhengding_wall", "正定古城墙", "正定城墙", "Zhengding", "South Gate of Zhengding"),
     ("longxing_temple", "隆兴寺", "隆兴寺", "Longxing Temple", "Longxing Temple Zhengding"),
-    ("yanghe_tower", "阳和楼", "阳和楼", None, "Yanghe Tower"),
+    ("yanghe_tower", "阳和楼", "阳和楼", None, "Yanghe Lou Zhengding tower"),
     ("zhaozhou_bridge", "赵州桥", "赵州桥", "Zhaozhou Bridge", "Zhaozhou Bridge"),
     ("xibaipo", "西柏坡", "西柏坡", "Xibaipo", "Xibaipo"),
     # ---------- 保定 ----------
@@ -59,6 +71,28 @@ SPOTS = [
     ("baoding_museum", "保定市博物馆", "保定市博物馆", None, "Baoding Museum"),
     ("jingxiu_park", "竞秀公园", "竞秀公园", None, "Jingxiu Park Baoding"),
     ("baoding_street", "西大街", "保定西大街", None, "Baoding West Street"),
+    # ---------- 秦皇岛 ----------
+    ("shanhaiguan", "山海关·天下第一关", "山海关", "Shanhai Pass", "Shanhaiguan gatehouse"),
+    ("shanhaiguan_gate", "山海关城楼", None, None, "Gatehouse for Shanhai Pass"),
+    ("laolongtou", "老龙头", "老龙头", "Old Dragon's Head", "Old Dragon Head Great Wall"),
+    ("jiaoshan_wall", "角山长城", "角山长城", None, "Jiaoshan Great Wall"),
+    ("beidaihe", "北戴河海滨", "北戴河区", "Beidaihe", "Beidaihe panorama"),
+    ("beidaihe_sunset", "北戴河晚霞", None, None, "北戴河的晚霞"),
+    ("aranya", "阿那亚·礼堂", None, None, "Aranya Litang"),
+    ("qhd_museum", "秦皇岛博物馆", "秦皇岛博物馆", None, "秦皇岛博物馆"),
+    ("zushan", "祖山（秦皇岛山景）", None, None, "兔耳山 秦皇岛"),
+    ("laohushi", "老虎石海上公园", "老虎石公园", None, "老虎石公园的沙滩"),
+    # ---------- 邯郸 ----------
+    ("congtai", "丛台公园·武灵丛台", "丛台", "Congtai Park", "Congtai Park Handan"),
+    ("guangfu", "广府古城", "广府镇", "Guangfu, Yongnian", "Guangfu ancient city wall Hebei"),
+    ("xiangtangshan", "响堂山石窟", "响堂山石窟", "Xiangtangshan Grottoes", "Xiangtangshan Grottoes"),
+    ("wahuanggong", "娲皇宫", "娲皇宫", "Wahuang Palace", "Wahuang Palace Shexian"),
+    ("jingnianghu", "京娘湖", "京娘湖", "Jingniang Lake", "Jingniang Lake"),
+    ("handan_museum", "邯郸博物馆", "邯郸市博物馆", "Handan Museum", "Handan Museum"),
+    ("xuebuqiao", "学步桥", "学步桥", None, "Xuebu Bridge Handan"),
+    ("zhaowangcheng", "赵王城遗址", "赵王城", None, "Zhao Wang Cheng Handan"),
+    ("qibugou", "七步沟", None, None, "七步沟"),
+    ("cizhouyao", "磁州窑", "磁州窑", "Cizhou ware", "Cizhou ware"),
     # 河北美食
     ("lvrou_huoshao", "驴肉火烧", "驴肉火烧", None, "Donkey burger"),
     ("banmian", "牛肉板面", "板面", None, "Banmian noodles"),

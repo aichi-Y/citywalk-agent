@@ -110,15 +110,17 @@
   },
   "hebei_museum": {
     "name": "河北博物院",
-    "file": "Hebei Provincial Museum, Shijiazhuang (10080742095).jpg",
-    "page": "//commons.wikimedia.org/wiki/File:Hebei_Provincial_Museum,_Shijiazhuang_(10080742095).jpg",
-    "license": "Wikimedia Commons 开放许可"
+    "source": "Wikimedia Commons",
+    "license": "CC BY-SA (Wikimedia Commons)",
+    "artist": "Wikimedia Commons contributors",
+    "file": "hebei_museum_2.jpg"
   },
   "zhengding_wall": {
     "name": "正定古城墙",
-    "source": "https://commons.wikimedia.org/wiki/File:South_Gate_of_Zhengding_City_Wall_9.jpg",
-    "license": "CC0",
-    "artist": "E2568"
+    "source": "Wikimedia Commons",
+    "license": "CC BY-SA (Wikimedia Commons)",
+    "artist": "Wikimedia Commons contributors",
+    "file": "zhengding_wall_4.jpg"
   },
   "longxing_temple": {
     "name": "隆兴寺",
@@ -216,5 +218,222 @@
     "source": "https://commons.wikimedia.org/wiki/File:%E8%80%B3%E6%9C%B5%E7%9C%BC%E4%BC%9A%E9%A6%86_%E4%BA%94%E5%A4%A7%E9%81%93%E5%BA%97.jpg",
     "license": "CC BY-SA 4.0",
     "artist": "Amazingloong"
+  },
+  "beidaihe": {
+    "name": "北戴河海滨",
+    "source": "https://commons.wikimedia.org/wiki/File:Beidaihe_panorama_from_the_south.jpg",
+    "license": "CC BY-SA 4.0",
+    "artist": "Charlie fong",
+    "file": "Beidaihe panorama from the south.jpg"
+  },
+  "shanhaiguan": {
+    "name": "山海关·天下第一关",
+    "source": "https://commons.wikimedia.org/wiki/File:%E5%A4%A9%E4%B8%8B%E7%AC%AC%E4%B8%80%E5%85%B3%28%E5%B1%B1%E6%B5%B7%E5%85%B3%29_-_panoramio.jpg",
+    "license": "CC BY-SA 3.0",
+    "artist": "迟鹏",
+    "file": "天下第一关(山海关) - panoramio.jpg"
+  },
+  "laolongtou": {
+    "name": "老龙头",
+    "source": "https://commons.wikimedia.org/wiki/File:The_Dragon_Head_of_Great_Wall_200908.jpg",
+    "license": "CC BY-SA 3.0",
+    "artist": "颐园新居",
+    "file": "The Dragon Head of Great Wall 200908.jpg"
+  },
+  "shanhaiguan_gate": {
+    "name": "山海关城楼",
+    "source": "https://commons.wikimedia.org/wiki/File:%E5%A4%A9%E4%B8%8B%E7%AC%AC%E4%B8%80%E5%85%B3.jpeg",
+    "license": "CC BY-SA 4.0",
+    "artist": "R6775j",
+    "file": "天下第一关.jpeg"
+  },
+  "jiaoshan_wall": {
+    "name": "角山长城",
+    "source": "https://commons.wikimedia.org/wiki/File:%E8%A7%92%E5%B1%B1%E9%95%BF%E5%9F%8E.jpg",
+    "license": "CC BY-SA 4.0",
+    "artist": "Cjsy2026",
+    "file": "角山长城.jpg"
+  },
+  "beidaihe_sunset": {
+    "name": "北戴河海滨",
+    "source": "https://commons.wikimedia.org/wiki/File:Beidaihe,_Qinhuangdao,_Hebei,_China_-_panoramio_(13).jpg",
+    "license": "CC BY 3.0",
+    "artist": "liyuhanrenll",
+    "file": "Beidaihe, Qinhuangdao, Hebei, China - panoramio (13).jpg"
+  },
+  "qhd_museum": {
+    "name": "秦皇岛博物馆",
+    "source": "https://commons.wikimedia.org/wiki/File:%E7%A7%A6%E7%9A%87%E5%B2%9B%E5%8D%9A%E7%89%A9%E9%A6%86.jpg",
+    "license": "CC0",
+    "artist": "云在动",
+    "file": "秦皇岛博物馆.jpg"
+  },
+  "aranya": {
+    "name": "阿那亚·礼堂",
+    "source": "https://commons.wikimedia.org/wiki/File:Aranya_Litang.jpg",
+    "license": "CC BY-SA 4.0",
+    "artist": "Yumeto",
+    "file": "Aranya Litang.jpg"
+  },
+  "zushan": {
+    "name": "祖山·秦皇岛山岳风光",
+    "source": "https://commons.wikimedia.org/wiki/File:%E5%85%94%E8%80%B3%E5%B1%B1_(%E7%A7%A6%E7%9A%87%E5%B2%9B)%E5%B1%B1%E5%B3%B02.jpg",
+    "license": "CC BY-SA 4.0",
+    "artist": "云在动",
+    "file": "兔耳山 (秦皇岛)山峰2.jpg"
+  },
+  "congtai": {
+    "name": "丛台公园·武灵丛台",
+    "source": "https://commons.wikimedia.org/wiki/File:Congtai_Park_East_Gate.jpg",
+    "license": "CC BY-SA 4.0",
+    "artist": "我乃野云鹤",
+    "file": "Congtai Park East Gate.jpg"
+  },
+  "wahuanggong": {
+    "name": "娲皇宫",
+    "source": "https://commons.wikimedia.org/wiki/File:20190907_Wahuanggong_Palast_der_G%C3%B6ttin_N%C3%BCwa_Shexian_Hebei_06_anagoria.jpg",
+    "license": "CC BY 3.0",
+    "artist": "Anagoria",
+    "file": "20190907 Wahuanggong Palast der Göttin Nüwa Shexian Hebei 06 anagoria.jpg"
+  },
+  "jingnianghu": {
+    "name": "京娘湖",
+    "source": "https://commons.wikimedia.org/wiki/File:Jingniang_Lake_2.jpg",
+    "license": "CC0",
+    "artist": "H2v5o68z",
+    "file": "Jingniang Lake 2.jpg"
+  },
+  "xiangtangshan": {
+    "name": "响堂山石窟",
+    "source": "https://commons.wikimedia.org/wiki/File:%E5%8C%97%E5%93%8D%E5%A0%82%E5%B1%B1%E7%9F%B3%E7%AA%9F%E5%85%A5%E5%8F%A3.jpg",
+    "license": "CC0",
+    "artist": "H2v5o68z",
+    "file": "北响堂山石窟入口.jpg"
+  },
+  "handan_museum": {
+    "name": "邯郸博物馆",
+    "source": "https://commons.wikimedia.org/wiki/File:Handan_Museum_2.jpg",
+    "license": "CC0",
+    "artist": "H2v5o68z",
+    "file": "Handan Museum 2.jpg"
+  },
+  "xuebuqiao": {
+    "name": "学步桥",
+    "source": "https://commons.wikimedia.org/wiki/File:Ancient_stone_bridges_of_Xue_Bu.jpg",
+    "license": "CC BY-SA 4.0",
+    "artist": "我乃野云鹤",
+    "file": "Ancient stone bridges of Xue Bu.jpg"
+  },
+  "qibugou": {
+    "name": "七步沟",
+    "source": "https://commons.wikimedia.org/wiki/File:Qi_Bu_Gou_Mountain_11.jpg",
+    "license": "CC BY-SA 4.0",
+    "artist": "我乃野云鹤",
+    "file": "Qi Bu Gou Mountain 11.jpg"
+  },
+  "zhaowangcheng": {
+    "name": "赵王城遗址",
+    "source": "https://commons.wikimedia.org/wiki/File:%E8%B5%B5%E7%8E%8B%E5%9F%8E%E9%81%97%E5%9D%80%E5%85%AC%E5%9B%AD_2.jpg",
+    "license": "CC0",
+    "artist": "H2v5o68z",
+    "file": "赵王城遗址公园 2.jpg"
+  },
+  "guangfu": {
+    "name": "广府古城",
+    "source": "https://commons.wikimedia.org/wiki/File:Guangfu_Ancient_City_4.jpg",
+    "license": "CC BY-SA 4.0",
+    "artist": "我乃野云鹤",
+    "file": "Guangfu Ancient City 4.jpg"
+  },
+  "cizhouyao": {
+    "name": "磁州窑",
+    "source": "https://commons.wikimedia.org/wiki/File:Labit_-_Support_de_coupe_Cizhou-_Chine_70_5_3.jpg",
+    "license": "Public domain",
+    "artist": "Didier Descouens",
+    "file": "Labit - Support de coupe Cizhou- Chine 70 5 3.jpg"
+  },
+  "laohushi": {
+    "name": "老虎石海上公园",
+    "source": "https://commons.wikimedia.org/wiki/File:%E8%80%81%E8%99%8E%E7%9F%B3%E5%85%AC%E5%9B%AD%E7%9A%84%E6%B2%99%E6%BB%A9.jpg",
+    "license": "CC BY-SA 4.0",
+    "artist": "Antigng",
+    "file": "老虎石公园的沙滩.jpg"
+  },
+  "forbidden_city": {
+    "name": "故宫",
+    "source": "故宫太和殿",
+    "license": "网络公开图片（必应图片检索）",
+    "artist": "景点实景",
+    "file": "故宫太和殿.jpg"
+  },
+  "tiananmen": {
+    "name": "天安门",
+    "source": "天安门城楼",
+    "license": "网络公开图片（必应图片检索）",
+    "artist": "景点实景",
+    "file": "天安门城楼.jpg"
+  },
+  "temple_of_heaven": {
+    "name": "天坛",
+    "source": "天坛祈年殿",
+    "license": "网络公开图片（必应图片检索）",
+    "artist": "景点实景",
+    "file": "天坛祈年殿.jpg"
+  },
+  "summer_palace": {
+    "name": "颐和园",
+    "source": "颐和园佛香阁昆明湖",
+    "license": "网络公开图片（必应图片检索）",
+    "artist": "景点实景",
+    "file": "颐和园佛香阁昆明湖.jpg"
+  },
+  "great_wall": {
+    "name": "八达岭长城",
+    "source": "八达岭长城",
+    "license": "网络公开图片（必应图片检索）",
+    "artist": "景点实景",
+    "file": "八达岭长城.jpg"
+  },
+  "old_summer_palace": {
+    "name": "圆明园",
+    "source": "圆明园大水法遗址",
+    "license": "网络公开图片（必应图片检索）",
+    "artist": "景点实景",
+    "file": "圆明园大水法遗址.jpg"
+  },
+  "national_museum": {
+    "name": "中国国家博物馆",
+    "source": "中国国家博物馆",
+    "license": "网络公开图片（必应图片检索）",
+    "artist": "景点实景",
+    "file": "中国国家博物馆.jpg"
+  },
+  "lama_temple": {
+    "name": "雍和宫",
+    "source": "Wikimedia Commons",
+    "license": "CC BY-SA (Wikimedia Commons)",
+    "artist": "Wikimedia Commons contributors",
+    "file": "lama_temple_6.jpg"
+  },
+  "prince_gong": {
+    "name": "恭王府",
+    "source": "Wikimedia Commons",
+    "license": "CC BY-SA (Wikimedia Commons)",
+    "artist": "Wikimedia Commons contributors",
+    "file": "prince_gong_7.jpg"
+  },
+  "beihai_park": {
+    "name": "北海公园",
+    "source": "Wikimedia Commons",
+    "license": "CC BY-SA (Wikimedia Commons)",
+    "artist": "Wikimedia Commons contributors",
+    "file": "beihai_park_4.jpg"
+  },
+  "bird_nest": {
+    "name": "鸟巢",
+    "source": "Wikimedia Commons",
+    "license": "CC BY-SA (Wikimedia Commons)",
+    "artist": "Wikimedia Commons contributors",
+    "file": "bird_nest_2.jpg"
   }
 }

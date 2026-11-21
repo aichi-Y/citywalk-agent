@@ -44,27 +44,99 @@ PREF_OPTIONS = [
     "休闲慢逛（citywalk）",
 ]
 
-# 景点配图：7 类素材（本地静态图，离线可用、加载稳定）
-IMAGE_TYPES = {
-    "heritage": "古迹建筑",
-    "landmark": "现代地标",
-    "museum": "文博展馆",
-    "nature": "自然风光",
-    "food": "地方美食",
-    "night": "夜景灯影",
-    "street": "街区漫步",
+# 景点配图的两级策略：
+#   1) 优先用该景点的本地实拍照（static/images/spots，多城真实照片）
+#   2) 找不到就显示「题材卡片」——不再拿别的景点照片硬凑
+#      （旧版把天津之眼当"现代地标"、把古莲花池当"自然风光"、把包子当"美食"，
+#        结果故宫、颐和园、烤鸭全被套上不相干的照片，这就是"配图不匹配"的根源）
+TOPIC_META = {
+    "palace":   ("🏯", "宫殿园林", "#E8D3B2", "#C39A63"),
+    "temple":   ("⛩\ufe0f", "寺庙古刹", "#E0D0BA", "#B08F6A"),
+    "heritage": ("🏛\ufe0f", "古迹建筑", "#E6D1B2", "#C09A6A"),
+    "wall":     ("🧱", "城墙城门", "#DEC9AE", "#AC8760"),
+    "museum":   ("🖼\ufe0f", "文博展馆", "#D8E0E4", "#8FA5B0"),
+    "park":     ("🌳", "公园绿地", "#D3E5CF", "#87B487"),
+    "lake":     ("🌊", "湖光水色", "#CFE1E7", "#82AABD"),
+    "mountain": ("⛰\ufe0f", "山野风光", "#D8E1D1", "#8FA57C"),
+    "street":   ("🏮", "历史街区", "#E7D1BD", "#BB9068"),
+    "mall":     ("🛍\ufe0f", "商圈步行街", "#E4D6E7", "#AC8FBA"),
+    "night":    ("🌃", "夜景灯影", "#C6CFE1", "#6F80A4"),
+    "tower":    ("🗼", "城市地标", "#E2DCCD", "#AB9F82"),
+    "church":   ("⛪", "教堂建筑", "#DCD8CF", "#A69E90"),
+    "bridge":   ("🌉", "桥梁水岸", "#D2DFE4", "#88A5AE"),
+    "theater":  ("🎭", "剧场演出", "#E3D2DA", "#AC8798"),
+    "resort":   ("♨\ufe0f", "温泉度假", "#DBE0E6", "#98A4B2"),
+    "food_hotpot":  ("🍲", "火锅烧烤", "#F1D0BF", "#C87F5E"),
+    "food_roast":   ("🍖", "特色硬菜", "#F0CEB4", "#C17C4E"),
+    "food_noodle":  ("🍜", "面食汤粉", "#F2D9BC", "#C68A50"),
+    "food_snack":   ("🥟", "地方小吃", "#F3DBBF", "#CC9455"),
+    "food_dessert": ("🍡", "甜品糕点", "#F4D3D8", "#CB8693"),
+    "food_drink":   ("☕", "咖啡茶饮", "#EADCC9", "#AF8F69"),
+    "food":         ("🍽\ufe0f", "特色美食", "#F0D8C2", "#C38F64"),
 }
 
-# 关键词 → 图片类别（模型未给出 img 字段时兜底推断）
-IMAGE_KEYWORDS = [
-    ("food", ["小吃", "餐厅", "美食", "饭", "面", "包子", "煎饼", "烧烤", "火锅", "咖啡", "茶", "甜品", "夜市"]),
-    ("museum", ["博物馆", "美术馆", "展馆", "纪念馆", "图书馆", "展览"]),
-    ("night", ["夜景", "夜游", "灯光", "夜市", "酒吧"]),
-    ("nature", ["公园", "湖", "湿地", "山", "植物园", "河畔", "绿道", "森林"]),
-    ("street", ["街", "巷", "胡同", "广场", "五大道", "商圈", "步行街"]),
-    ("landmark", ["塔", "大楼", "中心", "大桥", "摩天轮", "电视塔", "地标", "天眼"]),
-    ("heritage", ["寺", "庙", "宫", "城墙", "故居", "遗址", "会馆", "文庙", "古镇", "陵"]),
+# 关键词 → 题材。美食与景点分开查，避免「天坛公园」被「汤」这类字误伤；
+# 组内顺序敏感：先具体后笼统。
+FOOD_KEYWORDS = [
+    ("food_hotpot", ["火锅", "涮肉", "烧烤", "烤串", "麻辣烫", "串串", "烤肉"]),
+    ("food_roast", ["烤鸭", "烧鹅", "烤羊", "烧鸡", "卤煮", "炖菜", "硬菜", "扒肉"]),
+    ("food_noodle", ["面", "粉", "米线", "馄饨", "粥", "汤"]),
+    ("food_dessert", ["糕", "甜", "冰淇淋", "冰室", "点心", "双皮奶", "糖"]),
+    ("food_drink", ["咖啡", "奶茶", "茶饮", "酒吧", "精酿"]),
+    ("food_snack", ["小吃", "包", "饺", "煎饼", "火烧", "炸", "饼", "锅巴菜", "卤"]),
 ]
+
+SPOT_KEYWORDS = [
+    ("night", ["夜景", "夜游", "灯光秀", "夜市"]),
+    ("church", ["教堂", "礼拜堂", "修道院"]),
+    ("bridge", ["桥"]),
+    ("theater", ["剧院", "剧场", "戏楼", "戏台", "相声", "演出"]),
+    ("resort", ["温泉", "滑雪", "度假"]),
+    ("mall", ["商圈", "购物中心", "商场", "步行街", "百货"]),
+    ("palace", ["故宫", "宫殿", "皇家", "颐和园", "御花园", "行宫", "园林", "莲池", "山庄"]),
+    ("wall", ["长城", "城墙", "城门", "关城", "古堡"]),
+    ("temple", ["寺", "庙", "坛", "道观", "祠", "塔", "石窟", "庵"]),
+    ("heritage", ["故居", "会馆", "遗址", "陵", "署", "府", "书院", "文庙", "古建", "宫"]),
+    ("museum", ["博物馆", "博物院", "美术馆", "展馆", "纪念馆", "图书馆", "科技馆", "展览"]),
+    ("lake", ["湖", "池", "湿地", "泉", "河畔", "江边", "海滨", "水乡"]),
+    ("park", ["公园", "绿地", "植物园", "广场", "草原"]),
+    ("mountain", ["山", "峰", "岭", "峡谷", "森林"]),
+    ("street", ["街", "巷", "胡同", "里弄", "古镇", "古城", "老街", "坊", "洋楼"]),
+    ("tower", ["摩天轮", "电视塔", "之眼", "大楼", "中心", "天际线", "地标"]),
+]
+
+MODEL_IMG_TO_TOPIC = {
+    "heritage": "heritage", "landmark": "tower", "museum": "museum",
+    "nature": "park", "food": "food", "night": "night", "street": "street",
+}
+
+
+def guess_topic(item: dict) -> str:
+    """按条目类型分流判题材：先看名字，名字判不出再看描述，最后看模型 img 字段"""
+    table = FOOD_KEYWORDS if item.get("type") == "美食" else SPOT_KEYWORDS
+    for src in (item.get("name", ""), item.get("desc", "")):
+        if not src:
+            continue
+        for key, words in table:
+            if any(w in src for w in words):
+                return key
+    old = str(item.get("img", "")).strip().lower()
+    if old in MODEL_IMG_TO_TOPIC:
+        return MODEL_IMG_TO_TOPIC[old]
+    return "food" if item.get("type") == "美食" else "heritage"
+
+
+def topic_card(item: dict) -> str:
+    """题材卡片：渐变底 + 图标 + 题材名。没有真图时用它，绝不贴别的景点照片。"""
+    key = guess_topic(item)
+    icon, label, c1, c2 = TOPIC_META.get(key, TOPIC_META["heritage"])
+    return (
+        f'<div class="zm-ph" style="background:linear-gradient(140deg,{c1} 0%,{c2} 100%)">'
+        f'<div class="zm-ph-in">'
+        f'<div class="zm-ph-ico">{icon}</div>'
+        f'<div class="zm-ph-tag">{label}</div>'
+        f"</div></div>"
+    )
 
 
 def load_config():
@@ -123,7 +195,7 @@ def refresh_api_config():
 
 # ---------------- Agent 调用层 ----------------
 
-def call_agent(messages: list) -> str:
+def call_agent(messages: list, max_tokens: int = 4096, temperature: float = 0.4) -> str:
     """非流式兜底调用（流式失败时使用）"""
     if not API_KEY:
         return json.dumps({"error": "未配置 LLM_API_KEY，请编辑项目目录下的 .env 文件"}, ensure_ascii=False)
@@ -132,7 +204,8 @@ def call_agent(messages: list) -> str:
         resp = requests.post(
             url,
             headers={"Authorization": f"Bearer {API_KEY}"},
-            json={"model": MODEL, "messages": messages, "temperature": 0.4, "max_tokens": 4096},
+            json={"model": MODEL, "messages": messages,
+                  "temperature": temperature, "max_tokens": max_tokens},
             timeout=120,
         )
         resp.raise_for_status()
@@ -183,25 +256,120 @@ def call_agent_stream(messages: list, on_update=None) -> str:
         return call_agent(messages)
 
 
-def build_user_input(city, days, budget, prefs, day_range=None):
-    base = (
+def build_user_input(
+    city, days, budget, prefs, day_range=None, banned=None,
+    own_spots=None, other_spots=None,
+):
+    head = ""
+    if banned:
+        head = (
+            f"【这是同一次行程的后半段续排】前面几天已经排完并去过以下地方，"
+            f"本次绝对不能再出现：{'、'.join(banned)}。"
+            f"如果这座城市的可用景点不够，就把每天条目减少到 2—3 条，"
+            f"宁可少排，也绝不能重复，更不能把同一个地方换个写法再写一次。"
+        )
+    base = head + (
         f"请为我规划行程。目标城市：{city}；出行天数：{days} 天；"
         f"总预算：{budget} 元；偏好标签：{'、'.join(prefs) if prefs else '不限'}。"
         f"要求：①每个景点之间必须给出交通方式、乘车站数/线路、耗时与费用，写入 transport 字段；"
         f"②为每个景点选择一个配图类别，写入 img 字段，取值只能是 "
         f"heritage / landmark / museum / nature / food / night / street 之一；"
-        f"③每天 3—4 个条目，desc 不超过 25 字、guide 不超过 30 字，只输出 JSON，不要任何解释性文字。"
+        f"③每天安排 3—4 个景点／美食条目（不少于 3 个），"
+        f"desc 不超过 22 字、guide 不超过 26 字、xhs 不超过 16 字，"
+        f"只输出 JSON，不要任何解释性文字。"
+        f"④【景点绝不重复】同一个景点、同一家店、同一个地点全程只出现一次；"
+        f"每天的主题片区必须错开（如 D1 老城古迹、D2 博物馆与街区、D3 近郊自然/夜景）。"
     )
+    if own_spots:
+        base += (
+            f"⑤【本段专属景点】第 {day_range[0]}—{day_range[1]} 天只从这些地点里选："
+            f"{'、'.join(own_spots)}；可以在此基础上补充同片区的小众点位。"
+        )
+    if other_spots:
+        base += (
+            f"⑥【其他天数已占用】以下地点已分配给同一次行程的其他天数，本次严禁出现，"
+            f"也不要写成同义或加城市前缀的变体：{'、'.join(other_spots)}。"
+        )
     if day_range:
         a, b = day_range
         base += (
-            f"④本次只需输出第 {a}—{b} 天（全程共 {days} 天）的内容，day 字段使用真实天序号；"
+            f"本次只需输出第 {a}—{b} 天（全程共 {days} 天）的内容，day 字段使用真实天序号；"
             f"transport 仍按天内的景点顺序给出。"
             f"注意：必须返回完整的 JSON 对象，结构为 "
             f'{{"city":"","days":[{{"day":{a},"items":[...]}}],"food":[],"total_cost":0,"within_budget":true,"notes":""}}，'
             f"即 days 数组里只包含第 {a}—{b} 天（共 {b - a + 1} 个元素），不要把单个 day 对象直接当作根节点。"
         )
     return base
+
+
+BASE_CITY_TOKENS = ("天津", "北京", "石家庄", "保定", "秦皇岛", "山海关", "北戴河", "邯郸", "正定", "河北")
+CITY_TOKENS = tuple(BASE_CITY_TOKENS)
+
+
+def set_active_city(city: str):
+    """把当前目标城市并入去重时要去掉的前缀词表。
+
+    预置城市的名字本来就写在词表里；换到北京、西安等城市后，
+    模型会写出「北京故宫」和「故宫」，不动态补进去就会漏判重复。
+    """
+    global CITY_TOKENS
+    c = (city or "").strip()
+    extra = []
+    if c:
+        extra.append(c)
+        for suf in ("市", "省", "自治区", "地区", "特别行政区"):
+            if c.endswith(suf) and len(c) > len(suf):
+                extra.append(c[: -len(suf)])
+                break
+    CITY_TOKENS = tuple(dict.fromkeys(list(BASE_CITY_TOKENS) + extra))
+
+
+def item_key(it: dict) -> str:
+    """条目去重用的键：去掉标点、空格和城市前缀。
+
+    模型常把同一个地方写成「古文化街」和「天津古文化街」，
+    不做前缀归一化会漏判，导致重复景点漏网。
+    """
+    name = (it.get("name") or "").strip()
+    for ch in "（(）)【[]】·・ 　\t\n":
+        name = name.replace(ch, "")
+    for c in CITY_TOKENS:
+        name = name.replace(c, "")
+    return name.strip()
+
+
+def find_duplicates(plan: dict):
+    """返回重复出现的地点列表 [(名称, 首次出现的天, 再次出现的天)]"""
+    seen, dups = {}, []
+    for day in plan.get("days") or []:
+        d = day.get("day")
+        for it in day.get("items") or []:
+            if it.get("type") == "交通":
+                continue
+            k = item_key(it)
+            if not k:
+                continue
+            hit = next((x for x in seen if x and (x in k or k in x)), None)
+            if hit:
+                dups.append((k, seen[hit], d))
+            else:
+                seen[k] = d
+    return dups
+
+
+def all_place_names(plan: dict, upto_day=None):
+    names = []
+    for day in plan.get("days") or []:
+        d = day.get("day")
+        if upto_day is not None and isinstance(d, int) and d > upto_day:
+            continue
+        for it in day.get("items") or []:
+            if it.get("type") == "交通":
+                continue
+            n = (it.get("name") or "").strip()
+            if n and n not in names:
+                names.append(n)
+    return names
 
 
 def parse_plan(text: str):
@@ -239,36 +407,79 @@ def verify_budget(plan: dict, budget: float):
 
 # ---------------- 景点配图 ----------------
 
-def guess_image(item: dict) -> str:
-    """优先用模型给的 img 字段，缺失则按名称/描述关键词推断，最后兜底 heritage"""
-    img = str(item.get("img", "")).strip().lower()
-    if img in IMAGE_TYPES:
-        return img
-    name = str(item.get("name", "")) + " " + str(item.get("desc", ""))
-    for key, words in IMAGE_KEYWORDS:
-        if any(w in name for w in words):
-            return key
-    return "heritage" if item.get("type") == "景点" else "food"
-
-
-def image_path(key: str) -> str:
-    """类别兜底图：优先缩略图（渲染快），缺失时回退原图"""
-    thumb = os.path.join(IMAGE_DIR, "thumbs", f"{key}.jpg")
-    if os.path.exists(thumb):
-        return thumb
-    path = os.path.join(IMAGE_DIR, f"{key}.jpg")
-    return path if os.path.exists(path) else os.path.join(IMAGE_DIR, "heritage.jpg")
-
-
 # ---------------- 景点实拍照片（Wikimedia Commons 开放许可） ----------------
 
 SPOT_DIR = os.path.join(IMAGE_DIR, "spots")
 PHOTO_INDEX = os.path.join(IMAGE_DIR, "photos_credit.json")
 
+# 每张实拍图属于哪座城市：具体景点的照片只在本地行程里用，
+# 避免保定的「鼓楼」配上天津鼓楼的照片（跨城借用＝一眼假）。
+SPOT_CITY = {}
+for _c, _keys in {
+    "天津": "tianjin_eye guculture_street porcelain_house xikai_church wanghailou "
+            "italian_town liang_qichao guangdong_hall tianjin_museum tianjin_confucius "
+            "tianjin_drumtower nanshi_food quanyechang haihe_night goubuli guobacai "
+            "xiangsheng jianbing erduoyan wudadao jingyuan",
+    "石家庄": "hebei_museum zhengding_wall longxing_temple zhaozhou_bridge xibaipo "
+              "banmian yanghe_tower",
+    "北京": "forbidden_city tiananmen temple_of_heaven summer_palace great_wall "
+            "old_summer_palace national_museum beihai_park bird_nest lama_temple prince_gong",
+    "保定": "zhili_office lotus_pond daci_pavilion baoding_academy baoding_museum "
+            "lvrou_huoshao",
+    "秦皇岛": "shanhaiguan shanhaiguan_gate laolongtou jiaoshan_wall "
+              "beidaihe beidaihe_sunset aranya qhd_museum zushan laohushi",
+    "邯郸": "congtai guangfu xiangtangshan wahuanggong jingnianghu "
+            "handan_museum xuebuqiao zhaowangcheng qibugou cizhouyao",
+}.items():
+    for _k in _keys.split():
+        SPOT_CITY[_k] = _c
+
+# 图库里的名字和行程里可能的写法对不上时，用别名补齐
+SPOT_ALIAS = {
+    "zhengding_wall": ["正定城墙", "正定古城", "正定古城墙", "正定南门"],
+    "hebei_museum": ["河北省博物馆", "河北博物馆", "河北博物院"],
+    "forbidden_city": ["故宫", "故宫博物院", "紫禁城", "太和殿"],
+    "tiananmen": ["天安门", "天安门广场", "天安门城楼"],
+    "temple_of_heaven": ["天坛", "天坛公园", "祈年殿"],
+    "summer_palace": ["颐和园", "佛香阁", "昆明湖"],
+    "great_wall": ["长城", "八达岭", "八达岭长城", "万里长城"],
+    "old_summer_palace": ["圆明园", "大水法", "圆明园遗址"],
+    "national_museum": ["国家博物馆", "中国国家博物馆", "国博"],
+    "beihai_park": ["北海", "北海公园", "白塔", "九龙壁"],
+    "bird_nest": ["鸟巢", "国家体育场", "奥林匹克体育场"],
+    "lama_temple": ["雍和宫", "雍和门", "喇嘛庙"],
+    "prince_gong": ["恭王府", "恭王府花园", "萃锦园"],
+    "tianjin_eye": ["天津之眼摩天轮"],
+    "lotus_pond": ["古莲花池公园"],
+    "baoding_academy": ["保定军校广场", "保定军校"],
+    "haihe_night": ["海河公园", "海河"],
+    "guangdong_hall": ["天津广东会馆"],
+    "xiangsheng": ["相声茶馆", "名流茶馆"],
+    "shanhaiguan": ["山海关", "山海关古城", "天下第一关", "山海关城楼", "山海关景区"],
+    "shanhaiguan_gate": ["山海关古城墙"],
+    "laolongtou": ["老龙头长城", "入海石城"],
+    "jiaoshan_wall": ["角山"],
+    "beidaihe": ["北戴河海滨", "北戴河海滩"],
+    "beidaihe_sunset": ["北戴河日出"],
+    "laohushi": ["老虎石", "老虎石海上公园", "老虎石海滩"],
+    "aranya": ["阿那亚", "孤独图书馆", "阿那亚孤独图书馆", "阿那亚礼堂", "阿那亚教堂"],
+    "qhd_museum": ["秦皇岛市博物馆"],
+    "congtai": ["丛台", "武灵丛台", "丛台公园"],
+    "guangfu": ["广府古城", "广府镇", "永年古城", "广府城"],
+    "xiangtangshan": ["响堂山", "响堂山石窟", "南北响堂山", "响堂寺"],
+    "wahuanggong": ["娲皇庙", "女娲宫", "涉县娲皇宫"],
+    "jingnianghu": ["京娘湖", "京娘湖风景区"],
+    "handan_museum": ["邯郸市博物馆", "邯郸博物馆"],
+    "xuebuqiao": ["学步桥", "邯郸学步"],
+    "zhaowangcheng": ["赵王城", "赵王城遗址公园", "赵邯郸故城"],
+    "qibugou": ["七步沟", "七步沟风景区"],
+    "cizhouyao": ["磁州窑", "磁州窑遗址", "磁州窑博物馆"],
+}
+
 
 @st.cache_data(show_spinner=False)
 def load_spot_index():
-    """景点名 -> 本地实拍图路径（只收录确实下载成功的）"""
+    """景点名 -> (实拍图路径, 图库键)（只收录确实下载成功的）"""
     idx = {}
     try:
         with open(PHOTO_INDEX, "r", encoding="utf-8") as f:
@@ -277,9 +488,11 @@ def load_spot_index():
         return idx
     for key, meta in data.items():
         p = os.path.join(SPOT_DIR, f"{key}.jpg")
-        name = (meta or {}).get("name") or ""
-        if name and os.path.exists(p):
-            idx[name] = p
+        if not os.path.exists(p):
+            continue
+        for name in [(meta or {}).get("name") or ""] + SPOT_ALIAS.get(key, []):
+            if name:
+                idx[name] = (p, key)
     return idx
 
 
@@ -288,26 +501,45 @@ def clean_spot_name(s: str) -> str:
     return re.sub(r"[\s·、,，。:：/]+", "", s)
 
 
-def photo_for(item: dict):
-    """按景点名最长匹配本地实拍照片；匹配不到返回 None"""
+def photo_for(item: dict, city: str = "", used: set = None):
+    """按景点名匹配本地实拍照片，匹配不到返回 None。
+
+    规则比旧版收紧（旧版只要子串命中就上图，「故宫」就套上了寺庙牌坊）：
+    · 名称完全相等，或图库名是行程名的子串/后缀（「白运章包子」→「包子」）；
+    · 具体景点的照片只在同一座城市使用，跨城不借；
+    · 同一张图在一次行程里只用一次，第二处宁可用题材卡。
+    """
     name = clean_spot_name(item.get("name", ""))
     if not name:
         return None
+    used = used if used is not None else set()
     idx = load_spot_index()
-    best = None
-    for spot, path in idx.items():
+    cands = []
+    for spot, (path, key) in idx.items():
         cs = clean_spot_name(spot)
-        if cs and cs in name and (best is None or len(cs) > best[0]):
-            best = (len(cs), path)
-    return best[1] if best else None
+        if not cs:
+            continue
+        if cs != name and not (len(cs) >= 2 and (cs in name or name.endswith(cs))):
+            continue
+        sc = SPOT_CITY.get(key, "")
+        if sc and city and sc != city:
+            continue
+        cands.append((cs == name, len(cs) / max(len(name), 1), path))
+    if not cands:
+        return None
+    cands.sort(key=lambda x: (x[0], x[1]), reverse=True)
+    for _, _, path in cands:
+        if path not in used:
+            return path
+    return None
 
 
-def image_for(item: dict):
-    """返回 (图片路径, 是否为该景点实拍)"""
-    real = photo_for(item)
+def image_for(item: dict, city: str = "", used: set = None):
+    """返回 (实拍图路径或 None, 是否为该景点实拍)"""
+    real = photo_for(item, city, used)
     if real:
         return real, True
-    return image_path(guess_image(item)), False
+    return None, False
 
 
 def xhs_search_url(city: str, name: str) -> str:
@@ -335,15 +567,20 @@ html, body, [data-testid="stAppViewContainer"], .stMarkdown, p, li, span, div{
 }
 .stApp{
   background:
-    radial-gradient(1100px 470px at 6% -14%, #FCE6D4 0%, rgba(252,230,212,0) 62%),
-    radial-gradient(900px 420px at 100% -8%, #E3EFE8 0%, rgba(227,239,232,0) 58%),
-    linear-gradient(180deg,#FDF8F1 0%,#FAF2E5 60%,#F8EFE1 100%);
+    repeating-radial-gradient(circle at 92% -6%, rgba(198,126,78,.10) 0 1px, rgba(198,126,78,0) 1px 34px),
+    repeating-radial-gradient(circle at -2% 104%, rgba(38,104,90,.085) 0 1px, rgba(38,104,90,0) 1px 38px),
+    radial-gradient(1100px 600px at 90% -14%, #FFB87F 0%, rgba(255,184,127,0) 58%),
+    radial-gradient(900px 520px at 0% 0%, #FFDDA8 0%, rgba(255,221,168,0) 60%),
+    radial-gradient(900px 580px at 106% 66%, #F79C72 0%, rgba(247,156,114,0) 58%),
+    radial-gradient(860px 540px at -6% 90%, #A9D6C2 0%, rgba(169,214,194,0) 58%),
+    radial-gradient(620px 400px at 52% 40%, #FFF1D6 0%, rgba(255,241,214,0) 72%),
+    linear-gradient(164deg,#FFF9F0 0%,#F7E1C4 32%,#EFD3B8 62%,#DBE5D4 100%);
   background-attachment:fixed;
   color:var(--ink);
 }
 /* 细纸纹，不影响点击 */
 .stApp::after{
-  content:""; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.55;
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.32;
   background-image:radial-gradient(rgba(120,96,72,.07) 1px, transparent 1px);
   background-size:24px 24px;
 }
@@ -389,8 +626,12 @@ hr{ border-color:var(--line) !important }
 /* hero */
 .zm-hero{
   position:relative; overflow:hidden; border-radius:22px; padding:26px 30px 22px;
-  background:linear-gradient(120deg,#FFF6EC 0%,#FDE9D8 46%,#E8F1EB 100%);
-  border:1px solid #F0DFCC; box-shadow:0 12px 30px rgba(150,110,76,.10);
+  background:
+    radial-gradient(420px 220px at 100% 0%, rgba(255,214,164,.55), rgba(255,214,164,0) 70%),
+    radial-gradient(380px 200px at 0% 100%, rgba(190,224,208,.42), rgba(190,224,208,0) 72%),
+    linear-gradient(120deg, rgba(255,252,246,.96) 0%, rgba(255,241,225,.94) 50%, rgba(235,243,238,.94) 100%);
+  border:1px solid rgba(201,169,97,.65);
+  box-shadow:0 14px 34px rgba(150,110,76,.12), inset 0 1px 0 rgba(255,255,255,.9);
   margin-bottom:18px;
 }
 .zm-hero::before{
@@ -414,9 +655,12 @@ hr{ border-color:var(--line) !important }
   background:linear-gradient(120deg,#DF613A,#E98B4C 55%,#2E6F62);
   -webkit-background-clip:text; background-clip:text; color:transparent;
 }
-.zm-sub{ position:relative; font-size:16px; color:#5A4B3E; margin-top:6px; font-weight:600 }
+.zm-sub{
+  position:relative; font-size:24px; line-height:1.35; color:#4A3B2E; margin-top:10px;
+  font-weight:800; letter-spacing:1.5px;
+}
 .zm-desc{ position:relative; font-size:14px; line-height:1.75; color:#6B5A4B; margin:12px 0 14px; max-width:860px }
-.zm-chips{ position:relative; display:flex; flex-wrap:wrap; gap:8px }
+.zm-chips{ position:relative; display:flex; flex-wrap:wrap; gap:8px; margin-top:16px }
 .zm-chips span{
   font-size:12.5px; color:#4B3D31; background:rgba(255,255,255,.8);
   border:1px solid #EFDCC8; border-radius:99px; padding:5px 11px;
@@ -439,6 +683,34 @@ hr{ border-color:var(--line) !important }
 }
 .zm-xhs:hover{ background:#FCDFE3; color:#9E1F32 }
 .zm-xhs-tip{ font-size:12px; color:#A5626E; margin-top:4px }
+/* 题材卡片：没有该景点实拍照时的占位，不借用别的景点照片 */
+.zm-ph{
+  position:relative; width:100%; padding-top:75%; border-radius:14px;
+  overflow:hidden; box-shadow:0 8px 18px rgba(120,90,60,.16);
+}
+.zm-ph::before{
+  content:""; position:absolute; inset:0; z-index:1;
+  background:
+    radial-gradient(circle at 50% 28%, rgba(255,255,255,.5), transparent 62%),
+    repeating-linear-gradient(135deg, rgba(255,255,255,.10) 0 2px, transparent 2px 10px);
+  pointer-events:none;
+}
+.zm-ph-in{
+  position:absolute; inset:0; z-index:2;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:7px;
+}
+.zm-ph-ico{
+  font-size:38px; line-height:1;
+  filter:drop-shadow(0 2px 3px rgba(110,80,50,.28));
+}
+.zm-ph-tag{
+  font-size:12px; font-weight:700; color:rgba(58,42,26,.82);
+  letter-spacing:.5px; background:rgba(255,255,255,.66);
+  border:1px solid rgba(255,255,255,.8); padding:2px 10px; border-radius:99px;
+}
+.zm-ph-note{
+  font-size:11.5px; color:#9A8878; text-align:center; margin-top:5px;
+}
 /* 指标卡 */
 [data-testid="stMetric"]{
   background:#fff; border:1px solid var(--line); border-radius:15px; padding:12px 14px;
@@ -455,15 +727,11 @@ hr{ border-color:var(--line) !important }
 st.markdown(THEME_CSS, unsafe_allow_html=True)
 
 st.markdown(
-    """
+    f"""
 <div class="zm-hero">
   <div class="zm-kicker">全国人工智能应用创新大赛 · 智能体作品</div>
   <h1 class="zm-title">智<span>漫游</span></h1>
   <div class="zm-sub">城市旅行智能规划 Agent</div>
-  <p class="zm-desc">
-    说出城市、天数、预算和偏好，Agent 自己查景点、排顺路动线、算预算、写讲解词，
-    并给每一段路程标好「地铁几站 / 步行多久 / 打车多少钱」；遇到临时闭园或下雨，它能当场改方案并说明理由。
-  </p>
   <div class="zm-chips">
     <span>🗺️ 顺路动线规划</span>
     <span>🚇 景点间交通衔接</span>
@@ -483,7 +751,12 @@ if "plan" not in st.session_state:
 
 with st.sidebar:
     st.header("🧳 行程需求")
-    city = st.text_input("目标城市", "天津")
+    city = st.text_input(
+        "目标城市",
+        "天津",
+        help="全国任意城市都能输入。北京 / 天津 / 石家庄 / 保定 / 秦皇岛 / 邯郸 有预置景点池与实拍图，出图更快；"
+             "其他城市（西安、成都、杭州…）会自动检索当地景点后再规划。",
+    )
     days = st.slider("出行天数", 1, MAX_DAYS, 2)
     budget = st.slider("总预算（元）", 200, 5000, 800, step=100)
     prefs = st.multiselect(
@@ -508,8 +781,12 @@ TYPE_ICON = {"景点": "🏛️", "美食": "🍜", "交通": "🚌", "打卡热
              "自然风光": "🌿", "文博展馆": "🏛️", "休闲慢逛": "🚶", "购物": "🛍️"}
 
 
-def render_item(item: dict, city: str = ""):
-    """单个行程条目：左实拍图、右信息，交通衔接与小红书参考各占一行"""
+def render_item(item: dict, city: str = "", used: set = None):
+    """单个行程条目：左配图、右信息，交通衔接与小红书参考各占一行
+
+    配图优先级：该景点实拍 → 题材卡片。没有实拍时不再借用别的景点照片，
+    同一张实拍图在一次行程里也只出现一次。
+    """
     itype = item.get("type", "")
     icon = TYPE_ICON.get(itype, "•")
     name = item.get("name", "")
@@ -518,13 +795,22 @@ def render_item(item: dict, city: str = ""):
     left, right = st.columns([1, 3], gap="medium")
     with left:
         if itype != "交通":
-            img, _is_real = image_for(item)
-            for kwargs in ({"width": "stretch", "output_format": "JPEG"}, {"width": "stretch"}, {"width": 120}):
-                try:
-                    st.image(img, **kwargs)
-                    break
-                except Exception:
-                    continue
+            used = used if used is not None else set()
+            img, is_real = image_for(item, city, used)
+            if is_real and img:
+                used.add(img)
+                for kwargs in ({"width": "stretch", "output_format": "JPEG"},
+                               {"width": "stretch"}, {"width": 120}):
+                    try:
+                        st.image(img, **kwargs)
+                        break
+                    except Exception:
+                        continue
+                st.markdown(
+                    f'<div class="zm-ph-note">实拍 · {name}</div>', unsafe_allow_html=True
+                )
+            else:
+                st.markdown(topic_card(item), unsafe_allow_html=True)
     with right:
         parts = [
             '<div class="zm-item">',
@@ -557,7 +843,8 @@ def render_plan(plan: dict):
         st.error(plan["error"])
         return
     city = plan.get("city", "")
-    st.subheader(f"📍 {city} 行程方案")
+    st.subheader(f"📍 {city} 行程方案（共 {len(plan.get('days') or [])} 天）")
+    used_imgs = set()
     for day in plan.get("days", []):
         with st.expander(f"第 {day.get('day')} 天", expanded=True):
             items = day.get("items", [])
@@ -570,7 +857,7 @@ def render_plan(plan: dict):
                     continue
                 if idx > 0 and not item.get("transport"):
                     st.caption("🚇 交通衔接：同上一条交通动线，按地图导航前往")
-                render_item(item, city)
+                render_item(item, city, used_imgs)
     foods = plan.get("food") or []
     if foods:
         st.markdown("🍜 **美食推荐**：" + "、".join(foods))
@@ -614,8 +901,8 @@ def generate_with_repair(messages: list, tip: str, expect_days: int = 0) -> str:
         if p is None:
             return False
         if expect_days:
-            have = {d.get("day") for d in p.get("days") or []}
-            return len({h for h in have if isinstance(h, int)}) >= expect_days
+            ds = [d for d in (p.get("days") or []) if isinstance(d, dict)]
+            return len(ds) >= expect_days
         return True
 
     reply = run_agent(messages, tip)
@@ -663,63 +950,331 @@ def normalize_plan(p):
     return None
 
 
-def generate_parallel(messages: list, city, days, budget, prefs):
-    """天数≥2：拆成两段并行生成，墙钟时间约减半；任一段失败或天数不齐返回 None，由上层回退单次生成"""
-    half = (days + 1) // 2
-    ranges = [(1, half), (half + 1, days)]
-    sys_msg = messages[0]
+def enforce_days(plan, days: int, budget: float = 0):
+    """最后一道闸门：保证输出天数与用户选择完全一致（1 天就是 1 天）。
 
-    def work(rng):
+    - 少于请求天数：返回 None（视为失败，上层重试或提示）
+    - 多于请求天数：截断
+    - 天序号一律重排为 1..days，避免模型重复写 day 导致显示混乱
+    """
+    p = normalize_plan(plan)
+    if not p:
+        return None
+    ds = [d for d in (p.get("days") or []) if isinstance(d, dict)]
+    if len(ds) < days:
+        return None
+    p["days"] = ds[:days]
+    for i, d in enumerate(p["days"], start=1):
+        d["day"] = i
+    total = sum(
+        (it.get("cost") or 0) for d in p["days"] for it in (d.get("items") or [])
+    )
+    p["total_cost"] = total
+    if budget:
+        p["within_budget"] = total <= budget
+    return p
+
+
+def fill_missing_days(messages, city, days, budget, prefs, plan):
+    """单次生成天数不足时，只补缺失的那几天（逐天串行，通常只补 1 天）"""
+    p = normalize_plan(plan) or {"city": city, "days": [], "food": [], "notes": ""}
+    ds = [d for d in (p.get("days") or []) if isinstance(d, dict)]
+    p["days"] = ds
+    sys_msg = messages[0]
+    for a in range(len(ds) + 1, days + 1):
         msgs = [
             sys_msg,
-            {"role": "user", "content": build_user_input(city, days, budget, prefs, day_range=rng)},
+            {
+                "role": "user",
+                "content": build_user_input(city, days, budget, prefs, day_range=(a, a)),
+            },
         ]
-        return call_agent_stream(msgs, None)
+        seg = normalize_plan(parse_plan(call_agent_stream(msgs, None)))
+        seg_days = [d for d in ((seg or {}).get("days") or []) if isinstance(d, dict)]
+        if not seg_days:
+            print(f"[fill] 第 {a} 天补齐失败", flush=True)
+            return None
+        p["days"].append(seg_days[0])
+    return p
 
+
+# 按「片区」成组排列：并行分段时按顺序切块分配给各段，天然互不重叠
+SPARE_SPOTS = {
+    "北京": [
+        "故宫", "天安门", "天坛", "颐和园", "八达岭长城", "圆明园",
+        "中国国家博物馆", "北海公园", "鸟巢", "雍和宫", "恭王府",
+        "什刹海", "南锣鼓巷", "前门大街", "景山公园", "故宫博物院",
+    ],
+    "天津": [
+        "古文化街", "鼓楼", "广东会馆", "南市食品街", "静园", "瓷房子", "劝业场",
+        "五大道", "西开教堂", "意式风情区", "天津之眼", "海河公园",
+        "天津博物馆", "水上公园", "宁园", "周恩来邓颖超纪念馆",
+    ],
+    "石家庄": [
+        "隆兴寺", "正定城墙", "荣国府", "开元寺", "正定古城",
+        "河北博物院", "长安公园", "石家庄水上公园", "世纪公园", "赵州桥",
+    ],
+    "保定": [
+        "直隶总督署", "古莲花池", "大慈阁", "保定军校广场", "竞秀公园",
+        "保定市博物馆", "东湖公园", "西大街",
+    ],
+    "秦皇岛": [
+        "山海关", "老龙头", "角山长城", "孟姜女庙", "天下第一关",
+        "鸽子窝公园", "北戴河海滨", "老虎石海上公园", "碧螺塔",
+        "阿那亚", "孤独图书馆", "秦皇岛博物馆", "秦皇求仙入海处",
+        "西港花园", "祖山",
+    ],
+    "邯郸": [
+        "丛台公园", "武灵丛台", "广府古城", "杨露禅故居", "响堂山石窟",
+        "娲皇宫", "京娘湖", "邯郸博物馆", "学步桥", "赵王城遗址",
+        "七步沟", "磁州窑遗址", "回车巷", "赵苑公园", "龙湖公园",
+    ],
+}
+
+
+def split_spots(city: str, n: int):
+    """把城市景点池按片区顺序切成 n 份，供并行分段各自独占，避免撞车。"""
+    pool = spot_pool_for(city)
+    if not pool or n <= 1:
+        return [[] for _ in range(n)]
+    size = -(-len(pool) // n)
+    return [pool[i * size:(i + 1) * size] for i in range(n)]
+
+
+CITY_SPOT_CACHE = {}
+
+
+def fetch_city_spots(city: str, want: int = 18) -> list:
+    """未预置城市：先快速问模型要一份该城的景点池（约 2—4 秒，结果进程内缓存）。
+
+    有了这份池子，「分区并行 + 景点全程不重复」这套机制对任意城市都成立；
+    取不到就返回空列表，逻辑自动退回纯模型规划，不影响出图。
+    """
+    c = (city or "").strip()
+    if not c:
+        return []
+    if c in CITY_SPOT_CACHE:
+        return CITY_SPOT_CACHE[c]
+    msgs = [
+        {"role": "system", "content": "你是城市旅行规划师，只输出 JSON 数组，不要任何解释文字。"},
+        {
+            "role": "user",
+            "content": (
+                f"列出「{c}」市区及近郊（车程 1 小时内）最经典的 {want} 个旅游去处"
+                f"（景点、历史街区、博物馆、公园），"
+                f"不要餐厅、酒店、演出。按地理片区相邻的顺序排列，名称用 2—8 字常用简称，"
+                f'只输出形如 ["故宫","天坛公园"] 的 JSON 数组。'
+            ),
+        },
+    ]
+    raw = call_agent(msgs, max_tokens=600, temperature=0.2)
+    pool = []
     try:
-        with ThreadPoolExecutor(max_workers=2) as ex:
-            replies = list(ex.map(work, ranges))
-    except Exception:
-        return None
+        a, b = raw.find("["), raw.rfind("]")
+        if a >= 0 and b > a:
+            arr = json.loads(raw[a: b + 1])
 
-    plans = [normalize_plan(parse_plan(r)) for r in replies]
+            def _flat(x):
+                """模型偶尔返回 [["故宫"],...] 或 [{"name":"故宫"}]，统一拍平取名字"""
+                if isinstance(x, str):
+                    yield x
+                elif isinstance(x, dict):
+                    yield str(x.get("name") or x.get("spot") or "")
+                elif isinstance(x, (list, tuple)):
+                    for y in x:
+                        yield from _flat(y)
+
+            for x in arr:
+                for name in _flat(x):
+                    name = re.sub(r"^\d+[.、:：\s]*", "", name.strip())
+                    name = name.split("（")[0].split("(")[0].strip()
+                    if 1 < len(name) <= 12 and name not in pool:
+                        pool.append(name)
+    except Exception as e:
+        print(f"[spots] {c} 景点池解析失败：{e}", flush=True)
+    CITY_SPOT_CACHE[c] = pool
+    print(f"[spots] {c} 自动获取景点池 {len(pool)} 个：{pool[:6]}…", flush=True)
+    return pool
+
+
+def spot_pool_for(city: str) -> list:
+    """取城市景点池：预置城市直接用；其他城市按需现取（带缓存）。"""
+    return SPARE_SPOTS.get(city) or fetch_city_spots(city)
+
+
+def _spare_item(name: str, idx: int) -> dict:
+    return {
+        "time": f"{9 + idx * 2:02d}:00",
+        "type": "景点",
+        "name": name,
+        "desc": "本地经典去处，可顺路安排",
+        "cost": 0,
+        "duration": "1.5h",
+        "transport": "地铁/步行 · 视距离而定 · 约 3 元",
+        "img": "heritage",
+        "xhs": "",
+        "guide": "换个角度看看这座城，留白也是行程的一部分。",
+    }
+
+
+def drop_duplicate_items(days, city: str = ""):
+    """本地兜底：保留每个地点第一次出现，删掉后面重复的条目。
+
+    模型偶尔无视「禁止重复」清单，与其再花 20 多秒重排，不如直接删掉重复项；
+    若某天因此太空，从该城市的备用景点池里补足，保证每天不少于 2 个去处。
+    """
+    seen = set()
+    for day in days:
+        kept = []
+        for it in day.get("items") or []:
+            if it.get("type") == "交通":
+                kept.append(it)
+                continue
+            k = item_key(it)
+            if k and any(x and (x in k or k in x) for x in seen):
+                continue
+            if k:
+                seen.add(k)
+            kept.append(it)
+
+        real = [x for x in kept if x.get("type") != "交通"]
+        if len(real) < 2:
+            pool = [n for n in spot_pool_for(city)
+                    if not any(x and (x in item_key({"name": n}) or item_key({"name": n}) in x)
+                               for x in seen)]
+            for i, name in enumerate(pool[: 2 - len(real)]):
+                kept.append(_spare_item(name, len(real) + i))
+                seen.add(item_key({"name": name}))
+            if kept:
+                kept.sort(key=lambda x: str(x.get("time", "")))
+        day["items"] = kept
+    return days
+
+
+def refill_thin_days(days, city, total_days, budget, prefs, min_items=2):
+    """兜底：去重后某天太空（甚至被清空）时，只针对那一天补排一次。
+
+    并行分段拿到的景点池是切开的，正常不会撞车；但换成没有预置池的城市、
+    或模型无视约束时，宁可多花几秒补一天，也不给用户一个空白的一天。
+    """
+    used = [it.get("name") for d in days for it in (d.get("items") or [])
+            if it.get("type") != "交通" and it.get("name")]
+    sys_msg = {"role": "system", "content": SYSTEM_PROMPT}
+    for d in days:
+        real = [it for it in (d.get("items") or []) if it.get("type") != "交通"]
+        if len(real) >= min_items:
+            continue
+        a = d.get("day") or 1
+        msgs = [sys_msg, {"role": "user", "content": build_user_input(
+            city, total_days, budget, prefs, day_range=(a, a), banned=used[:60])}]
+        seg = normalize_plan(parse_plan(call_agent_stream(msgs, None)))
+        seg_days = [x for x in ((seg or {}).get("days") or []) if isinstance(x, dict)]
+        if not seg_days:
+            print(f"[refill] 第 {a} 天补排失败", flush=True)
+            continue
+        new_items = []
+        for it in (seg_days[0].get("items") or []):
+            if it.get("type") == "交通":
+                continue
+            k = item_key(it)
+            if k and any(x and (x in k or k in x) for x in used):
+                continue
+            new_items.append(it)
+            if k:
+                used.append(k)
+        if new_items:
+            items = [it for it in (d.get("items") or []) if it.get("type") == "交通"] + new_items
+            items.sort(key=lambda x: str(x.get("time", "")))
+            d["items"] = items
+            print(f"[refill] 第 {a} 天补到 {len(new_items)} 个去处", flush=True)
+    return days
+
+
+def generate_parallel(messages: list, city, days, budget, prefs):
+    """分区并行生成：把景点池按片区切成互不重叠的几份，各段同时开跑。
+
+    速度：3 段并行 → 墙钟时间约等于「生成 2 天」的时间（5 天约 20 秒，而不是 50 秒）。
+    不重复：每段提示词里写死「本段专属景点」+「其他天已占用、严禁出现」，
+    从源头切开景点池；模型偶尔仍越界时，再由 drop_duplicate_items 本地清理兜底。
+    """
+    if days <= 1:
+        n_seg = 1
+    elif days == 2:
+        n_seg = 2
+    else:
+        n_seg = 3
+    set_active_city(city)
+    # 天数尽量平均分配，靠前的段多担一天
+    sizes = [days // n_seg + (1 if i < days % n_seg else 0) for i in range(n_seg)]
+    ranges, cur = [], 1
+    for s in sizes:
+        ranges.append((cur, cur + s - 1))
+        cur += s
+
+    groups = split_spots(city, n_seg)
+    sys_msg = messages[0]
+
+    def work(i):
+        own = groups[i] if i < len(groups) else []
+        other = [n for j, g in enumerate(groups) if j != i for n in g]
+        msgs = [
+            sys_msg,
+            {
+                "role": "user",
+                "content": build_user_input(
+                    city, days, budget, prefs, day_range=ranges[i],
+                    own_spots=own or None, other_spots=other or None,
+                ),
+            },
+        ]
+        reply = call_agent_stream(msgs, None)
+        p = normalize_plan(parse_plan(reply))
+        if not p:
+            return None
+        want = ranges[i][1] - ranges[i][0] + 1
+        pd = [d for d in (p.get("days") or []) if isinstance(d, dict)]
+        if len(pd) < want:
+            print(f"[segment] 第 {ranges[i][0]}—{ranges[i][1]} 段天数不足", flush=True)
+            return None
+        p["days"] = pd[:want]
+        return p
+
+    if n_seg == 1:
+        plans = [work(0)]
+    else:
+        with ThreadPoolExecutor(max_workers=n_seg) as ex:
+            plans = list(ex.map(work, range(n_seg)))
+
     if any(p is None for p in plans):
-        print(f"[parallel] 分段解析失败 days={days}", flush=True)
+        print(f"[segment] 有分段失败 days={days}，回退单次生成", flush=True)
         return None
 
     merged = {"city": city, "days": [], "food": [], "notes": ""}
-    for rng, p in zip(ranges, plans):
-        a, b = rng
-        want = list(range(a, b + 1))
-        pdays = p.get("days") or []
-        # 段内天数数量对上但天序号跑偏时，按期望区间纠正
-        if len(pdays) == len(want) and [d.get("day") for d in pdays] != want:
-            for d, nd in zip(pdays, want):
-                d["day"] = nd
+    for i, p in enumerate(plans):
+        a, b = ranges[i]
+        want = b - a + 1
+        pdays = [d for d in (p.get("days") or []) if isinstance(d, dict)]
+        if len(pdays) < want:
+            return None
+        merged["days"].extend(pdays[:want])
         merged["city"] = p.get("city") or merged["city"]
-        merged["days"].extend(pdays)
         for f in p.get("food") or []:
             if f not in merged["food"]:
                 merged["food"].append(f)
         if p.get("notes"):
             merged["notes"] = (merged["notes"] + " " + str(p["notes"])).strip()
 
-    # 按天序号排序并按 day 去重（保留先出现的）
-    merged["days"].sort(key=lambda d: d.get("day") or 0)
-    seen, uniq = set(), []
-    for d in merged["days"]:
-        dd = d.get("day")
-        if dd in seen:
-            continue
-        seen.add(dd)
-        uniq.append(d)
-    merged["days"] = uniq
+    # 按「段顺序 + 段内顺序」重新编号 1..days，不信任模型写的 day 字段
+    for i, d in enumerate(merged["days"], start=1):
+        d["day"] = i
 
-    # 天数必须齐全，否则视为失败，回退单次全量生成（宁可慢，不能少天）
-    missing = [i for i in range(1, days + 1) if i not in seen]
-    if missing:
-        print(f"[parallel] 天数缺失 days={days} missing={missing}", flush=True)
+    if len(merged["days"]) != days:
+        print(f"[segment] 天数不符 days={days} got={len(merged['days'])}", flush=True)
         return None
+
+    # 本地兜底：分区后仍撞车的少量景点直接删掉，并从备用池补足每天 2 个去处
+    merged["days"] = drop_duplicate_items(merged["days"], city)
+    merged["days"] = refill_thin_days(merged["days"], city, days, budget, prefs)
 
     total = sum(
         (it.get("cost") or 0) for d in merged["days"] for it in (d.get("items") or [])
@@ -746,12 +1301,13 @@ with col1:
             st.warning(f"示范行程加载失败：{e}")
 
     if go:
+        set_active_city(city)
         st.session_state.messages.append(
             {"role": "user", "content": build_user_input(city, days, budget, prefs)}
         )
         cache = st.session_state.setdefault("cache", {})
         # 缓存键只按"输入参数"取，重复点同一组参数必命中（不受聊天历史影响）
-        ck = f"v3|{city}|{days}|{budget}|{'/'.join(prefs)}"
+        ck = f"v5|{city}|{days}|{budget}|{'/'.join(prefs)}"
 
         if ck in cache:
             st.caption("⚡ 命中缓存，同一组参数秒出（演示时重复提问不用再等）")
@@ -759,10 +1315,10 @@ with col1:
         else:
             reply = None
             if days >= 2:
-                half = (days + 1) // 2
+                n_seg = 2 if days == 2 else 3
                 with st.spinner(
-                    f"加速模式：拆成 2 段并行生成（第 1—{half} 天 / 第 {half + 1}—{days} 天），"
-                    "等待时间约为单线程的一半…"
+                    f"分区并行生成（{n_seg} 段同时进行，每段景点互不重叠），"
+                    "通常 20 秒左右出完整行程…"
                 ):
                     merged = generate_parallel(
                         st.session_state.messages, city, days, budget, prefs
@@ -770,7 +1326,7 @@ with col1:
                 if merged:
                     reply = json.dumps(merged, ensure_ascii=False)
                     st.caption(
-                        f"⚡ 加速模式：行程由 2 段并行生成后自动合并（第 1—{half} 天 / 第 {half + 1}—{days} 天）"
+                        f"⚡ 已分区并行生成并合并（{n_seg} 段同时进行），景点全程不重复"
                     )
                     print(f"[parallel] ok days={days} items={sum(len(d.get('items', [])) for d in merged['days'])}", flush=True)
                 else:
@@ -785,7 +1341,47 @@ with col1:
                 cache[ck] = reply
 
         st.session_state.messages.append({"role": "assistant", "content": reply})
-        st.session_state.plan = parse_plan(reply)
+        plan_final = enforce_days(parse_plan(reply), days, budget)
+        if plan_final is None:
+            # 兜底：模型这次天数不够，逐天补齐（通常只补 1 天），保证不多不少
+            with st.spinner(f"补齐缺失天数（目标 {days} 天）…"):
+                plan_final = enforce_days(
+                    fill_missing_days(
+                        st.session_state.messages, city, days, budget, prefs,
+                        parse_plan(reply),
+                    ),
+                    days,
+                    budget,
+                )
+            if plan_final is not None:
+                reply = json.dumps(plan_final, ensure_ascii=False)
+                st.session_state.messages[-1] = {"role": "assistant", "content": reply}
+                cache[ck] = reply
+            else:
+                st.warning(f"本次只生成了不足 {days} 天的行程，请再点一次「生成行程规划」。")
+
+        if plan_final:
+            # 景点不重复：本地清理（删掉后面重复的景点，并从备用池补足每天 2 个去处）。
+            # 不再为重复景点整篇重排——实测模型多半仍会重复，白等 20 多秒。
+            before = len(find_duplicates(plan_final))
+            plan_final["days"] = drop_duplicate_items(plan_final["days"], city)
+            with st.spinner("检查每天景点数量，不足的自动补排…"):
+                plan_final["days"] = refill_thin_days(
+                    plan_final["days"], city, days, budget, prefs
+                )
+            plan_final["total_cost"] = sum(
+                (it.get("cost") or 0)
+                for d in plan_final["days"]
+                for it in (d.get("items") or [])
+            )
+            plan_final["within_budget"] = plan_final["total_cost"] <= budget
+            reply = json.dumps(plan_final, ensure_ascii=False)
+            st.session_state.messages[-1] = {"role": "assistant", "content": reply}
+            cache[ck] = reply
+            if before:
+                print(f"[dedupe] 本地清理去掉 {before} 处重复景点", flush=True)
+
+        st.session_state.plan = plan_final or parse_plan(reply)
         st.session_state.last_reply = reply
 
     if disturb_btn and disturb:
@@ -800,7 +1396,10 @@ with col1:
         )
         reply = generate_with_repair(st.session_state.messages, "Agent 正在重新规划…")
         st.session_state.messages.append({"role": "assistant", "content": reply})
-        st.session_state.plan = parse_plan(reply)
+        keep_days = len((st.session_state.get("plan") or {}).get("days") or []) or days
+        st.session_state.plan = (
+            enforce_days(parse_plan(reply), keep_days, budget) or parse_plan(reply)
+        )
         st.session_state.last_reply = reply
 
     if "last_reply" in st.session_state:
@@ -836,7 +1435,7 @@ st.markdown(
     """
 <div class="zm-foot">
   景点照片来自 Wikimedia Commons 开放许可（CC BY / CC BY-SA / 公有领域），
-  无专属实拍的景点使用同类实景照片；「看小红书上的真实游记」为站内搜索直达，便于核对社区玩法与避坑信息。<br>
+  暂无实拍照片的景点以题材卡片标注类别，不混用其他景点照片；「看小红书上的真实游记」为站内搜索直达，便于核对社区玩法与避坑信息。<br>
   智漫游 · 城市旅行智能规划 Agent · 全国人工智能应用创新大赛参赛作品
 </div>
 """,
