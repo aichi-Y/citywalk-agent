@@ -368,10 +368,10 @@
   },
   "tiananmen": {
     "name": "天安门",
-    "source": "天安门城楼",
-    "license": "网络公开图片（必应图片检索）",
-    "artist": "景点实景",
-    "file": "天安门城楼.jpg"
+    "page": "Wikimedia Commons",
+    "title": "File:Tiananmen Gate 20090528 Beijing.jpg",
+    "license": "Wikimedia Commons（CC BY / CC BY-SA / 公有领域）",
+    "city": "北京"
   },
   "temple_of_heaven": {
     "name": "天坛",
@@ -417,10 +417,10 @@
   },
   "prince_gong": {
     "name": "恭王府",
-    "source": "Wikimedia Commons",
-    "license": "CC BY-SA (Wikimedia Commons)",
-    "artist": "Wikimedia Commons contributors",
-    "file": "prince_gong_7.jpg"
+    "page": "Wikimedia Commons",
+    "title": "File:Prince Gong Mansion garden corridor.jpg",
+    "license": "Wikimedia Commons（CC BY / CC BY-SA / 公有领域）",
+    "city": "北京"
   },
   "beihai_park": {
     "name": "北海公园",
@@ -435,5 +435,89 @@
     "license": "CC BY-SA (Wikimedia Commons)",
     "artist": "Wikimedia Commons contributors",
     "file": "bird_nest_2.jpg"
+  },
+  "nanluoguxiang": {
+    "name": "南锣鼓巷",
+    "page": "Wikimedia Commons",
+    "title": "File:南锣鼓巷.jpg",
+    "license": "Wikimedia Commons（CC BY / CC BY-SA / 公有领域）",
+    "city": "北京"
+  },
+  "shichahai": {
+    "name": "什刹海",
+    "page": "Wikimedia Commons",
+    "title": "File:什刹海 20240115 02.jpg",
+    "license": "Wikimedia Commons（CC BY / CC BY-SA / 公有领域）",
+    "city": "北京"
+  },
+  "qianmen": {
+    "name": "前门大街",
+    "page": "Wikimedia Commons",
+    "title": "File:前门大街 - panoramio.jpg",
+    "license": "Wikimedia Commons（CC BY / CC BY-SA / 公有领域）",
+    "city": "北京"
+  },
+  "jingshan": {
+    "name": "景山公园",
+    "page": "Wikimedia Commons",
+    "title": "File:景山公园 (20315852831).jpg",
+    "license": "Wikimedia Commons（CC BY / CC BY-SA / 公有领域）",
+    "city": "北京"
+  },
+  "kaoya": {
+    "name": "北京烤鸭",
+    "page": "Wikimedia Commons",
+    "title": "File:Peking duck 1.jpg",
+    "license": "Wikimedia Commons（CC BY / CC BY-SA / 公有领域）",
+    "city": "北京"
+  },
+  "zhajiangmian": {
+    "name": "炸酱面",
+    "page": "Wikimedia Commons",
+    "title": "File:Zhajiangmian in Handan.jpg",
+    "license": "Wikimedia Commons（CC BY / CC BY-SA / 公有领域）",
+    "city": "北京"
+  },
+  "luzhu": {
+    "name": "卤煮火烧",
+    "page": "Wikimedia Commons",
+    "title": "File:卤煮火烧中的火烧.jpg",
+    "license": "Wikimedia Commons（CC BY / CC BY-SA / 公有领域）",
+    "city": "北京"
+  },
+  "rongguofu": {
+    "name": "荣国府",
+    "page": "Wikimedia Commons",
+    "title": "File:正定荣国府牌坊.jpg",
+    "license": "Wikimedia Commons（CC BY / CC BY-SA / 公有领域）",
+    "city": "石家庄"
+  },
+  "kaiyuansi": {
+    "name": "开元寺",
+    "page": "Wikimedia Commons",
+    "title": "File:正定开元寺钟楼2018.jpg",
+    "license": "Wikimedia Commons（CC BY / CC BY-SA / 公有领域）",
+    "city": "石家庄"
+  },
+  "changan_park": {
+    "name": "长安公园",
+    "page": "Wikimedia Commons",
+    "title": "File:石家庄长安公园.jpg",
+    "license": "Wikimedia Commons（CC BY / CC BY-SA / 公有领域）",
+    "city": "石家庄"
+  },
+  "helemi": {
+    "name": "饸饹面",
+    "page": "Wikimedia Commons",
+    "title": "File:Mutton Hele noodles.jpg",
+    "license": "Wikimedia Commons（CC BY / CC BY-SA / 公有领域）",
+    "city": "石家庄"
+  },
+  "century_park": {
+    "name": "世纪公园",
+    "page": "Wikimedia Commons",
+    "title": "File:世纪公园 石家庄 Yuhua Shijiazhuang.jpg",
+    "license": "Wikimedia Commons（CC BY / CC BY-SA / 公有领域）",
+    "city": "石家庄"
   }
 }

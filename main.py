@@ -421,9 +421,10 @@ for _c, _keys in {
             "tianjin_drumtower nanshi_food quanyechang haihe_night goubuli guobacai "
             "xiangsheng jianbing erduoyan wudadao jingyuan",
     "石家庄": "hebei_museum zhengding_wall longxing_temple zhaozhou_bridge xibaipo "
-              "banmian yanghe_tower",
+              "banmian yanghe_tower rongguofu kaiyuansi changan_park helemi century_park",
     "北京": "forbidden_city tiananmen temple_of_heaven summer_palace great_wall "
-            "old_summer_palace national_museum beihai_park bird_nest lama_temple prince_gong",
+            "old_summer_palace national_museum beihai_park bird_nest lama_temple prince_gong "
+            "nanluoguxiang shichahai qianmen jingshan kaoya zhajiangmian luzhu",
     "保定": "zhili_office lotus_pond daci_pavilion baoding_academy baoding_museum "
             "lvrou_huoshao",
     "秦皇岛": "shanhaiguan shanhaiguan_gate laolongtou jiaoshan_wall "
@@ -474,6 +475,20 @@ SPOT_ALIAS = {
     "zhaowangcheng": ["赵王城", "赵王城遗址公园", "赵邯郸故城"],
     "qibugou": ["七步沟", "七步沟风景区"],
     "cizhouyao": ["磁州窑", "磁州窑遗址", "磁州窑博物馆"],
+    # 北京补充
+    "nanluoguxiang": ["南锣鼓巷", "南锣鼓巷胡同", "帽儿胡同"],
+    "shichahai": ["什刹海", "什刹海冰场", "后海", "前海"],
+    "qianmen": ["前门大街", "前门", "正阳门大街", "大栅栏"],
+    "jingshan": ["景山公园", "景山", "万春亭"],
+    "kaoya": ["全聚德烤鸭", "北京烤鸭", "烤鸭", "果木烤鸭"],
+    "zhajiangmian": ["老北京炸酱面", "炸酱面", "炸酱面馆"],
+    "luzhu": ["卤煮火烧", "卤煮", "卤煮小肠"],
+    # 石家庄补充
+    "rongguofu": ["荣国府", "正定荣国府", "红楼荣国府"],
+    "kaiyuansi": ["开元寺", "正定开元寺", "开元寺钟楼", "须弥塔"],
+    "changan_park": ["长安公园", "石家庄长安公园"],
+    "century_park": ["世纪公园", "石家庄世纪公园"],
+    "helemi": ["饸饹面", "饸饹", "安徽饸饹面", "牛肉饸饹面"],
 }
 
 

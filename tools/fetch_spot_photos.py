@@ -33,6 +33,13 @@ SPOTS = [
     ("bird_nest", "鸟巢", "国家体育场", "Beijing National Stadium", "Beijing National Stadium"),
     ("lama_temple", "雍和宫", "雍和宫", "Yonghe Temple", "Yonghe Temple Beijing"),
     ("prince_gong", "恭王府", "恭王府", "Prince Gong's Mansion", "Prince Gong Mansion Beijing"),
+    ("nanluoguxiang", "南锣鼓巷", "南锣鼓巷", None, "南锣鼓巷 Beijing"),
+    ("shichahai", "什刹海", "什刹海", None, "什刹海 Beijing"),
+    ("qianmen", "前门大街", "前门大街", None, "前门大街 Beijing"),
+    ("jingshan", "景山公园", "景山公园", None, "景山公园 Beijing Jingshan"),
+    ("kaoya", "北京烤鸭", None, "Peking duck", "Peking duck"),
+    ("zhajiangmian", "炸酱面", None, "Zhajiangmian", "Zhajiangmian"),
+    ("luzhu", "卤煮火烧", None, None, "卤煮火烧 Beijing"),
     # ---------- 天津 ----------
     ("tianjin_eye", "天津之眼", "天津之眼", "Tianjin Eye", "Tianjin Eye"),
     ("guculture_street", "古文化街", "天津古文化街", "Ancient Culture Street", "Ancient Culture Street Tianjin"),
@@ -96,6 +103,11 @@ SPOTS = [
     # 河北美食
     ("lvrou_huoshao", "驴肉火烧", "驴肉火烧", None, "Donkey burger"),
     ("banmian", "牛肉板面", "板面", None, "Banmian noodles"),
+    ("rongguofu", "荣国府", None, None, "正定荣国府"),
+    ("kaiyuansi", "开元寺", None, None, "正定开元寺钟楼"),
+    ("changan_park", "长安公园", None, None, "石家庄长安公园"),
+    ("century_park", "世纪公园", None, None, "石家庄世纪公园"),
+    ("helemi", "饸饹面", None, None, "饸饹面"),
     ("baozi", "包子", "包子", "Baozi", "Baozi"),
 ]
 
