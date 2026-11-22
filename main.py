@@ -527,6 +527,16 @@ def photo_for(item: dict, city: str = "", used: set = None):
     name = clean_spot_name(item.get("name", ""))
     if not name:
         return None
+    # 城市名归一化：模型可能写「石家庄市 / 北京市 / 秦皇岛市 / 石家庄 」，
+    # 若用精确匹配会把全部实拍图过滤掉，界面只剩题材卡（曾导致"补了图却看不到"）
+    def _norm_city(c):
+        c = re.sub(r"\s+", "", str(c or ""))
+        for suf in ("特别行政区", "自治区", "地区", "省", "市"):
+            if c.endswith(suf) and len(c) > len(suf):
+                c = c[: -len(suf)]
+                break
+        return c
+    city_n = _norm_city(city)
     used = used if used is not None else set()
     idx = load_spot_index()
     cands = []
@@ -537,7 +547,7 @@ def photo_for(item: dict, city: str = "", used: set = None):
         if cs != name and not (len(cs) >= 2 and (cs in name or name.endswith(cs))):
             continue
         sc = SPOT_CITY.get(key, "")
-        if sc and city and sc != city:
+        if sc and city_n and sc != city_n:
             continue
         cands.append((cs == name, len(cs) / max(len(name), 1), path))
     if not cands:
