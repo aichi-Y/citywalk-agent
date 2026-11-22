@@ -58,8 +58,8 @@ SPOTS = [
     ("quanyechang", "劝业场", "天津劝业场", "Quanyechang", "Quanyechang Tianjin"),
     ("haihe_night", "海河夜景", "海河", "Hai River", "Haihe River night Tianjin"),
     # 天津美食
-    ("goubuli", "狗不理包子", "狗不理", "Goubuli", "Goubuli baozi"),
-    ("erduoyan", "耳朵眼炸糕", "耳朵眼炸糕", None, "Erduoyan fried cake"),
+    ("goubuli", "狗不理包子", None, "Goubuli", "Goubuli baozi xiaolongbao"),
+    ("erduoyan", "耳朵眼炸糕", None, None, "fried dough cake Chinese"),
     ("jianbing", "煎饼果子", "煎饼馃子", "Jianbing", "Jianbing guozi"),
     ("guobacai", "锅巴菜", "锅巴菜", None, "Guobacai"),
     ("xiangsheng", "相声", "相声", "Xiangsheng", "Xiangsheng performance"),
@@ -109,6 +109,9 @@ SPOTS = [
     ("century_park", "世纪公园", None, None, "石家庄世纪公园"),
     ("helemi", "饸饹面", None, None, "饸饹面"),
     ("baozi", "包子", "包子", "Baozi", "Baozi"),
+    ("shaobing", "烧饼", None, None, "Shaobing bread"),
+    ("shaoji", "烧鸡", None, None, "Chinese roasted chicken"),
+    ("local_dish", "地方家常菜", None, None, "Chinese local dish"),
 ]
 
 BAD = ("map", "karte", "mapa", "logo", "diagram", "plan_", "stamp", "coin",
